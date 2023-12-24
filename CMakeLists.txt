@@ -3,6 +3,7 @@ project(gbae VERSION 0.1.0.0)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 if(CMAKE_CONFIGURATION_TYPES) 
     if(NOT "Profile" IN_LIST CMAKE_CONFIGURATION_TYPES)
@@ -23,15 +24,14 @@ add_subdirectory(third_party)
 add_subdirectory(tests)
 
 add_executable(emulator)
-target_sources(emulator 
-    PUBLIC
-        main.cpp
-)
+
 target_sources(emulator 
     PUBLIC
         FILE_SET modules TYPE CXX_MODULES FILES
             utility.cpp
 )
+add_subdirectory(src/fuckstd)
+add_subdirectory(src)
 
 target_compile_options(emulator 
     PUBLIC 
@@ -43,10 +43,7 @@ target_link_options(emulator
         -fsanitize=address
 )
 
-target_link_libraries(emulator
-    PRIVATE 
-        fmt
-)
+# target_link_libraries(emulator)
 
 
 enable_testing()
