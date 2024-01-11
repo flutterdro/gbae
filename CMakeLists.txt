@@ -20,10 +20,10 @@ else()
     endif()
 endif()
 
-add_subdirectory(deps)
-add_subdirectory(tests)
 
 add_executable(emulator)
+add_subdirectory(deps)
+add_subdirectory(tests)
 
 add_subdirectory(src/utility)
 add_subdirectory(src)
@@ -42,10 +42,14 @@ target_link_options(emulator
         -flto
 )
 
-target_link_libraries(emulator PUBLIC fmt)
-find_package(Qt6 REQUIRED COMPONENTS Widgets)
-qt_standard_project_setup()
+target_link_libraries(emulator 
+    PUBLIC 
+        fmt
+        spdlog
+        glfw
+        glm
+        imgui
+)
 
-target_link_libraries(emulator PRIVATE Qt6::Widgets)
 
 enable_testing()
