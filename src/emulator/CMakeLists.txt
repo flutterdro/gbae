@@ -1,8 +1,18 @@
 target_sources(emulator 
-    PUBLIC
-        FILE_SET modules TYPE CXX_MODULES FILES
-            gbaemu.cpp
-            cpu/arm7tdmi.cpp
-            cpu/disassembler/disassembler.cpp
-            mmu/mmu.cpp
+    PRIVATE
+        FILE_SET headers TYPE HEADERS FILES
+            defines.hpp
+            gbaemu.hpp
+            cpu/arm7tdmi.hpp
+            cpu/bus.hpp
+            cpu/disassembler/disassembler.hpp
+            mmu/mmu.hpp
+            cpu/registermanager.hpp
+    PRIVATE
+        mmu/mmu.cpp
+        cpu/arm7tdmi.cpp
+        cpu/bus.cpp
+        cpu/disassembler/disassembler.cpp
+        cpu/registermanager.cpp
+        gbaemu.cpp
 )

@@ -1,9 +1,21 @@
-[submodule "third_party/Catch2"]
-	path = third_party/Catch2
+[submodule "deps/Catch2"]
+	path = deps/Catch2
 	url = https://github.com/catchorg/Catch2.git
-[submodule "third_party/abseil-cpp"]
-	path = third_party/abseil-cpp
+[submodule "deps/abseil-cpp"]
+	path = deps/abseil-cpp
 	url = https://github.com/abseil/abseil-cpp.git
-[submodule "third_party/fmt"]
-	path = third_party/fmt
+[submodule "deps/fmt"]
+	path = deps/fmt
 	url = https://github.com/fmtlib/fmt.git
+[submodule "deps/glfw"]
+	path = deps/glfw
+	url = https://github.com/glfw/glfw.git
+[submodule "deps/glm"]
+	path = deps/glm
+	url = https://github.com/g-truc/glm.git
+[submodule "deps/spdlog"]
+	path = deps/spdlog
+	url = https://github.com/gabime/spdlog.git
+[submodule "deps/imgui"]
+	path = deps/imgui
+	url = https://github.com/ocornut/imgui.git

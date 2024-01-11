@@ -1,29 +1,12 @@
-module;
+#include "disassembler.hpp"
+#include <fmt/core.h>
 
-#include <stdexcept>
-#include <vector>
-#include <string>
-#include <span>
 #include <algorithm>
-#include <array>
-#include <ranges>
-#include <bit>
-#include <format>
-#include <cstddef>
-#include <print>
-
 #include "../../../defines.hpp"
 
-export module fgba.cpu.disassembler;
-import fstd.span;
-import fstd.vector;
-
-export namespace fgba {
-[[nodiscard]]auto disassemble(fstd::span<std::byte const>) -> fstd::vector<std::string>;
-}
 
 namespace fgba {
-[[nodiscard]] auto create_arm_instruction(fstd::span<std::byte const> instruction_bytes) noexcept
+[[nodiscard]] auto create_arm_instruction(std::span<std::byte const> instruction_bytes) noexcept
     -> u32;
 [[nodiscard]] auto arm_instruction_to_string(u32 instruction)
     -> std::string;
@@ -129,14 +112,14 @@ auto condition_to_string(u32 instruction) -> std::string {
         default: return "??";
     }
 }
-auto register_to_string(u32 registernum) ->std::string {
+auto register_to_string(u32 registernum) -> std::string {
     std::string ret("r");
     ret += std::to_string(registernum);
     return ret;
 }
-auto disassemble(fstd::span<std::byte const> binary) 
-    -> fstd::vector<std::string> {
-    fstd::vector<std::string> ret;
+auto disassemble(std::span<std::byte const> binary) 
+    -> std::vector<std::string> {
+    std::vector<std::string> ret;
 
     ret.reserve(binary.size()/4);
     for (size_t offset = 0; binary.size() > offset + 4; offset += 4) {
@@ -151,7 +134,7 @@ auto disassemble(fstd::span<std::byte const> binary)
     return ret;
 }
 
-auto create_arm_instruction(fstd::span<std::byte const> instruction_bytes) noexcept
+auto create_arm_instruction(std::span<std::byte const> instruction_bytes) noexcept
     -> u32 {
     std::array<std::byte, 4> buf;
     rngs::copy(instruction_bytes, rngs::begin(buf));
@@ -192,28 +175,28 @@ auto arm_instruction_to_string(u32 instruction)
     switch (instr) {
 //511
     case bx: {
-        ret = std::format("bx{} {}",
+        ret = fmt::format("bx{} {}",
             condition_to_string(instruction),
             register_to_string(instruction & 0xf)
         );
         break;
     }
     case b: {
-        ret = std::format("b{} {:#x}",
+        ret = fmt::format("b{} {:#x}",
             condition_to_string(instruction),
             (instruction & 0xffffff) << 2
         );
         break;
     }
     case bl:{
-        ret = std::format("bl{} {:#x}",
+        ret = fmt::format("bl{} {:#x}",
             condition_to_string(instruction),
             (instruction & 0xffffff) << 2
         );
         break;
     }
     case and_: {
-        ret = std::format("and{}{} {}, {}, {}",
+        ret = fmt::format("and{}{} {}, {}, {}",
             condition_to_string(instruction),
             instruction & (1u << 20) ? "s" : "",
             register_to_string((instruction >> 12) & 0xf),
@@ -223,7 +206,7 @@ auto arm_instruction_to_string(u32 instruction)
         break;
     }
     case eor: {
-        ret = std::format("eor{}{} {}, {}, {}",
+        ret = fmt::format("eor{}{} {}, {}, {}",
             condition_to_string(instruction),
             instruction & (1u << 20) ? "s" : "",
             register_to_string((instruction >> 12) & 0xf),
@@ -233,7 +216,7 @@ auto arm_instruction_to_string(u32 instruction)
         break;
     }
     case sub: {
-        ret = std::format("sub{}{} {}, {}, {}",
+        ret = fmt::format("sub{}{} {}, {}, {}",
             condition_to_string(instruction),
             instruction & (1u << 20) ? "s" : "",
             register_to_string((instruction >> 12) & 0xf),
@@ -243,7 +226,7 @@ auto arm_instruction_to_string(u32 instruction)
         break;
     }
     case rsb: {
-        ret = std::format("rsb{}{} {}, {}, {}",
+        ret = fmt::format("rsb{}{} {}, {}, {}",
             condition_to_string(instruction),
             instruction & (1u << 20) ? "s" : "",
             register_to_string((instruction >> 12) & 0xf),
@@ -253,7 +236,7 @@ auto arm_instruction_to_string(u32 instruction)
         break;
     }
     case add: {
-        ret = std::format("add{}{} {}, {}, {}",
+        ret = fmt::format("add{}{} {}, {}, {}",
             condition_to_string(instruction),
             instruction & (1u << 20) ? "s" : "",
             register_to_string((instruction >> 12) & 0xf),
@@ -263,7 +246,7 @@ auto arm_instruction_to_string(u32 instruction)
         break;
     }
     case adc: {
-        ret = std::format("adc{}{} {}, {}, {}",
+        ret = fmt::format("adc{}{} {}, {}, {}",
             condition_to_string(instruction),
             instruction & (1u << 20) ? "s" : "",
             register_to_string((instruction >> 12) & 0xf),
@@ -273,7 +256,7 @@ auto arm_instruction_to_string(u32 instruction)
         break;
     }
     case sbc: {
-        ret = std::format("sbc{}{} {}, {}, {}",
+        ret = fmt::format("sbc{}{} {}, {}, {}",
             condition_to_string(instruction),
             instruction & (1u << 20) ? "s" : "",
             register_to_string((instruction >> 12) & 0xf),
@@ -283,7 +266,7 @@ auto arm_instruction_to_string(u32 instruction)
         break;
     }
     case rsc: {
-        ret = std::format("rsc{}{} {}, {}, {}",
+        ret = fmt::format("rsc{}{} {}, {}, {}",
             condition_to_string(instruction),
             instruction & (1u << 20) ? "s" : "",
             register_to_string((instruction >> 12) & 0xf),
@@ -293,7 +276,7 @@ auto arm_instruction_to_string(u32 instruction)
         break;
     }
     case tst: {
-        ret = std::format("tst{} {}, {}",
+        ret = fmt::format("tst{} {}, {}",
             condition_to_string(instruction),
             register_to_string((instruction >> 16) & 0xf),
             get_operand_2(instruction & 0xfff, instruction & (1 << 25))
@@ -301,7 +284,7 @@ auto arm_instruction_to_string(u32 instruction)
         break;
     }
     case teq: {
-        ret = std::format("teq{} {}, {}",
+        ret = fmt::format("teq{} {}, {}",
             condition_to_string(instruction),
             register_to_string((instruction >> 16) & 0xf),
             get_operand_2(instruction & 0xfff, instruction & (1 << 25))
@@ -309,7 +292,7 @@ auto arm_instruction_to_string(u32 instruction)
         break;
     }
     case cmp: {
-        ret = std::format("cmp{} {}, {}",
+        ret = fmt::format("cmp{} {}, {}",
             condition_to_string(instruction),
             register_to_string((instruction >> 16) & 0xf),
             get_operand_2(instruction & 0xfff, instruction & (1 << 25))
@@ -317,7 +300,7 @@ auto arm_instruction_to_string(u32 instruction)
         break;
     }
     case cmn: {
-        ret = std::format("cmn{} {}, {}",
+        ret = fmt::format("cmn{} {}, {}",
             condition_to_string(instruction),
             register_to_string((instruction >> 16) & 0xf),
             get_operand_2(instruction & 0xfff, instruction & (1 << 25))
@@ -325,7 +308,7 @@ auto arm_instruction_to_string(u32 instruction)
         break;
     }
     case orr: {
-        ret = std::format("orr{}{} {}, {}, {}",
+        ret = fmt::format("orr{}{} {}, {}, {}",
             condition_to_string(instruction),
             instruction & (1u << 20) ? "s" : "",
             register_to_string((instruction >> 12) & 0xf),
@@ -335,7 +318,7 @@ auto arm_instruction_to_string(u32 instruction)
         break;
     }
     case mov: {
-        ret = std::format("mov{}{} {}, {}",
+        ret = fmt::format("mov{}{} {}, {}",
             condition_to_string(instruction),
             instruction & (1u << 20) ? "s" : "",
             register_to_string((instruction >> 12) & 0xf),
@@ -344,7 +327,7 @@ auto arm_instruction_to_string(u32 instruction)
         break;
     }
     case bic: {
-        ret = std::format("bic{}{} {}, {}, {}",
+        ret = fmt::format("bic{}{} {}, {}, {}",
             condition_to_string(instruction),
             instruction & (1u << 20) ? "s" : "",
             register_to_string((instruction >> 12) & 0xf),
@@ -354,7 +337,7 @@ auto arm_instruction_to_string(u32 instruction)
         break;
     }
     case mvn: {
-        ret = std::format("mvn{}{} {}, {}",
+        ret = fmt::format("mvn{}{} {}, {}",
             condition_to_string(instruction),
             instruction & (1u << 20) ? "s" : "",
             register_to_string((instruction >> 12) & 0xf),
@@ -363,7 +346,7 @@ auto arm_instruction_to_string(u32 instruction)
         break;
     }
     case mrs: {
-        ret = std::format("mrs{} r{}, {}",
+        ret = fmt::format("mrs{} r{}, {}",
             condition_to_string(instruction),
             (instruction >> 12) & 0xf,
             (instruction >> 22) & 1 ? "spsr" : "cpsr"
@@ -371,7 +354,7 @@ auto arm_instruction_to_string(u32 instruction)
         break;
     }
     case msr: {
-        ret = std::format("msr{} {}, r{}",
+        ret = fmt::format("msr{} {}, r{}",
             condition_to_string(instruction),
             (instruction >> 22) & 1 ? "spsr" : "cpsr",
             (instruction) & 0xf
@@ -380,7 +363,7 @@ auto arm_instruction_to_string(u32 instruction)
     }
     case msri: {
         auto operand_2 = instruction & 0xfff;
-        ret = std::format("msr{} {}, {}",
+        ret = fmt::format("msr{} {}, {}",
             condition_to_string(instruction),
             (instruction >> 22) & 1 ? "spsr_flg" : "cpsr_flg",
             (instruction >> 25) & 1 ? 
@@ -389,7 +372,7 @@ auto arm_instruction_to_string(u32 instruction)
         );
     }
     case mul: {
-        ret = std::format("mul{}{} {}, {}, {}",
+        ret = fmt::format("mul{}{} {}, {}, {}",
             condition_to_string(instruction),
             instruction & (1u << 20) ? "s" : "",
             register_to_string((instruction >> 16) & 0xf),
@@ -399,7 +382,7 @@ auto arm_instruction_to_string(u32 instruction)
         break;
     }
     case mla: {
-        ret = std::format("mla{}{} {}, {}, {}, {}",
+        ret = fmt::format("mla{}{} {}, {}, {}, {}",
             condition_to_string(instruction),
             instruction & (1u << 20) ? "s" : "",
             register_to_string((instruction >> 16) & 0xf),
@@ -409,7 +392,7 @@ auto arm_instruction_to_string(u32 instruction)
         );
     }
     case smull: {
-        ret = std::format("smull{}{} {}, {}, {}, {}",
+        ret = fmt::format("smull{}{} {}, {}, {}, {}",
             condition_to_string(instruction),
             instruction & (1u << 20) ? "s" : "",
             register_to_string((instruction >> 12) & 0xf),
@@ -420,7 +403,7 @@ auto arm_instruction_to_string(u32 instruction)
         break;
     }
     case smlal: {
-        ret = std::format("smlal{}{} {}, {}, {}, {}",
+        ret = fmt::format("smlal{}{} {}, {}, {}, {}",
             condition_to_string(instruction),
             instruction & (1u << 20) ? "s" : "",
             register_to_string((instruction >> 12) & 0xf),
@@ -431,7 +414,7 @@ auto arm_instruction_to_string(u32 instruction)
         break;
     }
     case umull: {
-        ret = std::format("umull{}{} {}, {}, {}, {}",
+        ret = fmt::format("umull{}{} {}, {}, {}, {}",
             condition_to_string(instruction),
             instruction & (1u << 20) ? "s" : "",
             register_to_string((instruction >> 12) & 0xf),
@@ -442,7 +425,7 @@ auto arm_instruction_to_string(u32 instruction)
         break;
     }
     case umlal: {
-        ret = std::format("umlal{}{} r{}, r{}, r{}, r{}",
+        ret = fmt::format("umlal{}{} r{}, r{}, r{}, r{}",
             condition_to_string(instruction),
             instruction & (1u << 20) ? "s" : "",
             (instruction >> 12) & 0xf,
@@ -463,26 +446,26 @@ auto arm_instruction_to_string(u32 instruction)
             }
         }();
         auto offset = (instruction) & (1ul << 25) ? 
-            std::format("{}r{}, {} #{}",
+            fmt::format("{}r{}, {} #{}",
                 (instruction >> 23) & 1 ? "+" : "-",
                 instruction & 0xf,
                 shift,
                 (instruction >> 7) & 0b11111) :
-            std::format("#{}", instruction & 0xfff);
+            fmt::format("#{}", instruction & 0xfff);
         std::string expresion;
         if ((instruction >> 24) & 1) {
-            expresion = std::format("[r{}, {}]{}",
+            expresion = fmt::format("[r{}, {}]{}",
                 (instruction >> 16) & 0xf,
                 offset,
                 instruction & (1u << 21) ? "!" : ""
             );
         } else {
-            expresion = std::format("[r{}], {}",
+            expresion = fmt::format("[r{}], {}",
                 (instruction >> 16) & 0xf,
                 offset
             );
         }
-        ret = std::format("ldr{}{} r{}, {}",
+        ret = fmt::format("ldr{}{} r{}, {}",
             condition_to_string(instruction),
             instruction & (1u << 22) ? "b" : "",
             (instruction >> 12) & 0xf,
@@ -501,7 +484,7 @@ auto arm_instruction_to_string(u32 instruction)
             }
         }();
         auto offset = (instruction >> 25) & 1 ? 
-            std::format("{}r{}, {} #{}",
+            fmt::format("{}r{}, {} #{}",
                 (instruction >> 23) & 1 ? "+" : "-",
                 instruction & 0xf,
                 shift,
@@ -509,18 +492,18 @@ auto arm_instruction_to_string(u32 instruction)
             "#" + std::to_string(instruction & 0xfff);
         std::string expresion;
         if ((instruction >> 24) & 1) {
-            expresion = std::format("[r{}, {}]{}",
+            expresion = fmt::format("[r{}, {}]{}",
                 (instruction >> 16) & 0xf,
                 offset,
                 instruction & (1u << 21) ? "!" : ""
             );
         } else {
-            expresion = std::format("[r{}], {}",
+            expresion = fmt::format("[r{}], {}",
                 (instruction >> 16) & 0xf,
                 offset
             );
         }
-        ret = std::format("str{}{} r{}, {}",
+        ret = fmt::format("str{}{} r{}, {}",
             condition_to_string(instruction),
             instruction & (1u << 22) ? "b" : "",
             (instruction >> 12) & 0xf,
@@ -531,24 +514,24 @@ auto arm_instruction_to_string(u32 instruction)
     case ldrh: {
         auto address = std::string{};
         auto offset = (instruction >> 22) & 1 ? 
-            std::format("{}r{}",
+            fmt::format("{}r{}",
                 (instruction >> 23) & 1 ? "+" : "-",
                 instruction & 0xf) :
             "#" + std::to_string(
                 (instruction & 0xf) | ((instruction >> 4) & 0xf0)
             );
         if (instruction & (1 << 24)) {
-            address = std::format("[r{}], {}",
+            address = fmt::format("[r{}], {}",
                 (instruction >> 16) & 0xf,
                 offset 
             );
         } else {
-            address = std::format("[r{}, {}]",
+            address = fmt::format("[r{}, {}]",
                 (instruction >> 16) & 0xf,
                 offset 
             );
         }
-        ret = std::format("ldr{}h r{}, {}",
+        ret = fmt::format("ldr{}h r{}, {}",
             condition_to_string(instruction),
             (instruction >> 12) & 0xf,
             address
@@ -558,24 +541,24 @@ auto arm_instruction_to_string(u32 instruction)
     case strh: {
         auto address = std::string{};
         auto offset = (instruction >> 22) & 1 ? 
-            std::format("{}r{}",
+            fmt::format("{}r{}",
                 (instruction >> 23) & 1 ? "+" : "-",
                 instruction & 0xf) :
             "#" + std::to_string(
                 (instruction & 0xf) | ((instruction >> 4) & 0xf0)
             );
         if (instruction & (1 << 24)) {
-            address = std::format("[r{}], {}",
+            address = fmt::format("[r{}], {}",
                 (instruction >> 16) & 0xf,
                 offset 
             );
         } else {
-            address = std::format("[r{}, {}]",
+            address = fmt::format("[r{}, {}]",
                 (instruction >> 16) & 0xf,
                 offset 
             );
         }
-        ret = std::format("str{}h r{}, {}",
+        ret = fmt::format("str{}h r{}, {}",
             condition_to_string(instruction),
             (instruction >> 12) & 0xf,
             address
@@ -585,24 +568,24 @@ auto arm_instruction_to_string(u32 instruction)
     case ldrsb: {
         auto address = std::string{};
         auto offset = (instruction >> 22) & 1 ? 
-            std::format("{}r{}",
+            fmt::format("{}r{}",
                 (instruction >> 23) & 1 ? "+" : "-",
                 instruction & 0xf) :
             "#" + std::to_string(
                 (instruction & 0xf) | ((instruction >> 4) & 0xf0)
             );
         if (instruction & (1 << 24)) {
-            address = std::format("[r{}], {}",
+            address = fmt::format("[r{}], {}",
                 (instruction >> 16) & 0xf,
                 offset 
             );
         } else {
-            address = std::format("[r{}, {}]",
+            address = fmt::format("[r{}, {}]",
                 (instruction >> 16) & 0xf,
                 offset 
             );
         }
-        ret = std::format("ldr{}sb r{}, {}",
+        ret = fmt::format("ldr{}sb r{}, {}",
             condition_to_string(instruction),
             (instruction >> 12) & 0xf,
             address
@@ -612,24 +595,24 @@ auto arm_instruction_to_string(u32 instruction)
     case ldrsh: {
         auto address = std::string{};
         auto offset = (instruction >> 22) & 1 ? 
-            std::format("{}r{}",
+            fmt::format("{}r{}",
                 (instruction >> 23) & 1 ? "+" : "-",
                 instruction & 0xf) :
             "#" + std::to_string(
                 (instruction & 0xf) | ((instruction >> 4) & 0xf0)
             );
         if (instruction & (1 << 24)) {
-            address = std::format("[r{}], {}",
+            address = fmt::format("[r{}], {}",
                 (instruction >> 16) & 0xf,
                 offset 
             );
         } else {
-            address = std::format("[r{}, {}]",
+            address = fmt::format("[r{}, {}]",
                 (instruction >> 16) & 0xf,
                 offset 
             );
         }
-        ret = std::format("ldr{}sh r{}, {}",
+        ret = fmt::format("ldr{}sh r{}, {}",
             condition_to_string(instruction),
             (instruction >> 12) & 0xf,
             address
@@ -659,7 +642,7 @@ auto arm_instruction_to_string(u32 instruction)
                 return ret;
             }()
         };
-        ret = std::format("ldm{}{} r{}{}, {{{}}}{}",
+        ret = fmt::format("ldm{}{} r{}{}, {{{}}}{}",
             condition_to_string(instruction),
             amn,
             (instruction >> 16) & 0x0f,
@@ -692,7 +675,7 @@ auto arm_instruction_to_string(u32 instruction)
                 return ret;
             }()
         };
-        ret = std::format("stm{}{} r{}{}, {{{}}}{}",
+        ret = fmt::format("stm{}{} r{}{}, {{{}}}{}",
             condition_to_string(instruction),
             amn,
             (instruction >> 16) & 0x0f,
@@ -703,7 +686,7 @@ auto arm_instruction_to_string(u32 instruction)
         break;
     }
     case swp: {
-        ret = std::format("swp{} r{}, r{}, [r{}]",
+        ret = fmt::format("swp{} r{}, r{}, [r{}]",
             condition_to_string(instruction),
             (instruction >> 12) & 0x0f,
             (instruction) & 0x0f,
@@ -712,7 +695,7 @@ auto arm_instruction_to_string(u32 instruction)
         break;
     }
     case swpb: {
-        ret = std::format("swp{}b r{}, r{}, [r{}]",
+        ret = fmt::format("swp{}b r{}, r{}, [r{}]",
             condition_to_string(instruction),
             (instruction >> 12) & 0x0f,
             (instruction) & 0x0f,
@@ -721,13 +704,13 @@ auto arm_instruction_to_string(u32 instruction)
         break;
     }
     case swi: {
-        ret = std::format("swi{}",
+        ret = fmt::format("swi{}",
             condition_to_string(instruction)
         );
         break;
     }
     case cdp: {
-        ret = std::format("cdp{} p{}, {}, c{}, c{}, c{}, {}",
+        ret = fmt::format("cdp{} p{}, {}, c{}, c{}, c{}, {}",
             condition_to_string(instruction),
             (instruction >> 8) & 0xf,
             (instruction >> 20) & 0xf,
@@ -742,12 +725,12 @@ auto arm_instruction_to_string(u32 instruction)
         std::string address{
             [instruction](){
                 if (instruction & (1 << 24)) {
-                    return std::format("[r{}], {}",
+                    return fmt::format("[r{}], {}",
                         (instruction >> 16) & 0xf,
                         instruction & 0xff
                     );
                 } else {
-                    return std::format("[r{}, {}]{}",
+                    return fmt::format("[r{}, {}]{}",
                         (instruction >> 16) & 0xf,
                         instruction & 0xff,
                         instruction & (1 << 21)
@@ -755,7 +738,7 @@ auto arm_instruction_to_string(u32 instruction)
                 }
             }()
         };
-        ret = std::format("ldc{}{} p{}, c{}, {}",
+        ret = fmt::format("ldc{}{} p{}, c{}, {}",
             condition_to_string(instruction),
             instruction & (1 << 22) ? "l" : "",
             (instruction >> 8) & 0xf,
@@ -768,12 +751,12 @@ auto arm_instruction_to_string(u32 instruction)
         std::string address{
             [instruction](){
                 if (instruction & (1 << 24)) {
-                    return std::format("[r{}], {}",
+                    return fmt::format("[r{}], {}",
                         (instruction >> 16) & 0xf,
                         instruction & 0xff
                     );
                 } else {
-                    return std::format("[r{}, {}]{}",
+                    return fmt::format("[r{}, {}]{}",
                         (instruction >> 16) & 0xf,
                         instruction & 0xff,
                         instruction & (1 << 21)
@@ -781,7 +764,7 @@ auto arm_instruction_to_string(u32 instruction)
                 }
             }()
         };
-        ret = std::format("stc{}{} p{}, c{}, {}",
+        ret = fmt::format("stc{}{} p{}, c{}, {}",
             condition_to_string(instruction),
             instruction & (1 << 22) ? "l" : "",
             (instruction >> 8) & 0xf,
