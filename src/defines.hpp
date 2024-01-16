@@ -13,7 +13,7 @@ using i16 = std::int16_t;
 using u32 = std::uint32_t;
 using i32 = std::int32_t;
 
-namespace vws = std::ranges::views;
-namespace rngs = std::ranges;
+namespace stdv = std::ranges::views;
+namespace stdr = std::ranges;
 
 #endif

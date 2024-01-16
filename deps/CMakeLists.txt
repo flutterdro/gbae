@@ -3,8 +3,6 @@
 add_subdirectory(fmt)
 set(SPDLOG_FMT_EXTERNAL ON CACHE BOOL "I already have fmt" FORCE)
 add_subdirectory(spdlog)
-# add_subdirectory(abseil-cpp)
-
 add_subdirectory(Catch2)
 add_subdirectory(glfw)
 add_subdirectory(glm)

@@ -4,7 +4,7 @@
 #include <algorithm>
 #include "../../../defines.hpp"
 
-
+namespace rngs = std::ranges;
 namespace fgba {
 [[nodiscard]] auto create_arm_instruction(std::span<std::byte const> instruction_bytes) noexcept
     -> u32;

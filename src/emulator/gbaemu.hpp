@@ -15,6 +15,10 @@ public:
         -> void {
         m_mmu.load_bios(path);
     }
+    [[nodiscard]]auto dump_cpu_state() const noexcept
+        -> cpu::arm7tdmi const& {
+            return m_cpu;
+        }
 private:
     cpu::arm7tdmi m_cpu;
     mmu::memory_managment_unit m_mmu;
