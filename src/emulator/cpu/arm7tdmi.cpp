@@ -1,5 +1,5 @@
 #include "arm7tdmi.hpp"
-#include "defines.hpp"
+#include "cpudefines.hpp"
 #include "shifter.hpp"
 #include "lla.hpp"
 #include <__utility/to_underlying.h>
@@ -13,9 +13,6 @@ arm7tdmi::arm7tdmi()
     m_arm_impl[arm_instruction_set::bx]     = &arm7tdmi::arm_bx;
     m_arm_impl[arm_instruction_set::b]      = &arm7tdmi::arm_b;  
     m_arm_impl[arm_instruction_set::bl]     = &arm7tdmi::arm_bl; 
-    m_arm_impl[arm_instruction_set::and_]   = &arm7tdmi::arm_and; 
-    m_arm_impl[arm_instruction_set::andi]   = &arm7tdmi::arm_andi;
-    m_arm_impl[arm_instruction_set::andrs]  = &arm7tdmi::arm_andrs;
 }
 
 auto arm7tdmi::advance_execution() -> void {
@@ -83,51 +80,69 @@ auto arm7tdmi::arm_bl(u32 const instruction)
     prefetch();
     prefetch();
 }
+[[nodiscard, gnu::always_inline]]constexpr auto andnot(u32 operand1, u32 operand2) { return operand1 & (~operand2); }
+[[nodiscard, gnu::always_inline]]constexpr auto andwastaken(u32 operand1, u32 operand2) { return operand1 & (~operand2); }
+[[nodiscard, gnu::always_inline]]constexpr auto eorwastaken(u32 operand1, u32 operand2) { return operand1 & (~operand2); }
+[[nodiscard, gnu::always_inline]]constexpr auto orrwastaken(u32 operand1, u32 operand2) { return operand1 & (~operand2); }
+//TODO: You will need to write a shit ton of tests for this shit
+#define GEN_ARM_DATA_PROCESSING \
+    GEN_ARM_DATA_PROCESSING_LOGICAL
+#define GEN_ARM_DATA_PROCESSING_LOGICAL \
+    GEN_ARM_LOGICAL_OPERATION_GROUP         (and_, andwastaken)\
+    GEN_ARM_LOGICAL_OPERATION_GROUP         (eor,  eorwastaken)\
+    GEN_ARM_LOGICAL_OPERATION_GROUP         (orr,  orrwastaken)\
+    GEN_ARM_LOGICAL_OPERATION_GROUP         (bic,  andnot   )\
+    GEN_ARM_LOGICAL_OPERATION_NORESULT_GROUP(tst,  andwastaken)\
+    GEN_ARM_LOGICAL_OPERATION_NORESULT_GROUP(teq,  eorwastaken)
+#define GEN_ARM_LOGICAL_OPERATION_GROUP(arm_instruction_base, operator) \
+    GEN_ARM_LOGICAL_OPERATION_WITH_SHIFT(arm_instruction_base, operator,      )\
+    GEN_ARM_LOGICAL_OPERATION_WITH_SHIFT(arm_instruction_base, operator, lsr32)\
+    GEN_ARM_LOGICAL_OPERATION_WITH_SHIFT(arm_instruction_base, operator, asr32)\
+    GEN_ARM_LOGICAL_OPERATION_WITH_SHIFT(arm_instruction_base, operator, rrx  )\
+    GEN_ARM_LOGICAL_OPERATION_WITH_SHIFT(arm_instruction_base, operator, lsl  )\
+    GEN_ARM_LOGICAL_OPERATION_WITH_SHIFT(arm_instruction_base, operator, lsr  )\
+    GEN_ARM_LOGICAL_OPERATION_WITH_SHIFT(arm_instruction_base, operator, asr  )\
+    GEN_ARM_LOGICAL_OPERATION_WITH_SHIFT(arm_instruction_base, operator, ror  )
+#define GEN_ARM_LOGICAL_OPERATION_NORESULT_GROUP(arm_instruction_base, operator) \
+    GEN_ARM_LOGICAL_OPERATION_NORESULT_WITH_SHIFT(arm_instruction_base, operator,      )\
+    GEN_ARM_LOGICAL_OPERATION_NORESULT_WITH_SHIFT(arm_instruction_base, operator, lsr32)\
+    GEN_ARM_LOGICAL_OPERATION_NORESULT_WITH_SHIFT(arm_instruction_base, operator, asr32)\
+    GEN_ARM_LOGICAL_OPERATION_NORESULT_WITH_SHIFT(arm_instruction_base, operator, rrx  )\
+    GEN_ARM_LOGICAL_OPERATION_NORESULT_WITH_SHIFT(arm_instruction_base, operator, lsl  )\
+    GEN_ARM_LOGICAL_OPERATION_NORESULT_WITH_SHIFT(arm_instruction_base, operator, lsr  )\
+    GEN_ARM_LOGICAL_OPERATION_NORESULT_WITH_SHIFT(arm_instruction_base, operator, asr  )\
+    GEN_ARM_LOGICAL_OPERATION_NORESULT_WITH_SHIFT(arm_instruction_base, operator, ror  )
+#define GEN_ARM_LOGICAL_OPERATION_WITH_SHIFT(arm_instruction_base, operator, shift_type)\
+auto arm7tdmi::arm_##arm_instruction_base##shift_type(u32 const instruction) noexcept -> void {\
+    auto const rd = (instruction >> 12) & 0xf;\
+    auto const rn = (instruction >> 16) & 0xf;\
+    auto const rm = (instruction >>  0) & 0xf;\
+    [[maybe_unused]]auto const shift_info = (instruction >> 4) & 0xfff;\
+    auto const operand2 = shifter::shift##shift_type(shift_info, m_registers[rm], m_registers.cpsr().check_ccf(ccf::c));\
+    m_registers[rd] = operator(m_registers[rn], operand2);\
+}\
+auto arm7tdmi::arm_##arm_instruction_base##s##shift_type(u32 const instruction) noexcept \
+    -> void {\
+    auto const rd = (instruction >> 12) & 0xf;\
+    auto const rn = (instruction >> 16) & 0xf;\
+    auto const rm = (instruction >>  0) & 0xf;\
+    [[maybe_unused]]auto const shift_info = (instruction >> 4) & 0xfff;\
+    auto const [operand2, carryout] = shifter::shift##shift_type##_s(shift_info, m_registers[rm], m_registers.cpsr().check_ccf(ccf::c));\
+    auto const res = m_registers[rd] = operator(m_registers[rn], operand2);\
+    m_registers.cpsr().set_ccf(ccf::c, carryout);\
+    m_registers.cpsr().set_ccf(ccf::z, not res);\
+    m_registers.cpsr().set_ccf(ccf::n, res & (1_u32 << 31));\
+}
+#define GEN_ARM_LOGICAL_OPERATION_NORESULT_WITH_SHIFT(arm_instruction_base, operator, shift_type)\
+auto arm7tdmi::arm_##arm_instruction_base##shift_type(u32 const instruction) noexcept -> void {\
+    auto const rd = (instruction >> 12) & 0xf;\
+    auto const rn = (instruction >> 16) & 0xf;\
+    auto const rm = (instruction >>  0) & 0xf;\
+    [[maybe_unused]]auto const shift_info = (instruction >> 4) & 0xfff;\
+    auto const operand2 = shifter::shift##shift_type(shift_info, m_registers[rm], m_registers.cpsr().check_ccf(ccf::c));\
+    m_registers[rd] = operator(m_registers[rn], operand2);\
+}\
 
-auto arm7tdmi::arm_and(u32 const instruction) 
-    -> void {
-    auto const rd = (instruction >> 12) & 0xf;
-    auto const rn = (instruction >> 16) & 0xf;
-    auto const shift_amount = instruction >> 7 & 0x1f;
-    auto const [operand2, carryout] = ishift(
-        (instruction >> 5) & 3,
-        m_registers[instruction & 0xf],
-        shift_amount,  
-        m_registers.cpsr().check_ccf(ccf::c)
-    );
-    auto const res = (m_registers[rd] = m_registers[rn] & operand2);
-    if (instruction & (1_u32 << 20)) {
-        m_registers.cpsr().set_ccf(ccf::c, carryout);
-        m_registers.cpsr().set_ccf(ccf::z, not res);
-        m_registers.cpsr().set_ccf(ccf::n, res & (1_u32 << 31));
-    }
-}
-auto arm7tdmi::arm_andi(u32 const instruction) 
-    -> void {
-    auto const rd = (instruction >> 12) & 0xf;
-    auto const rn = (instruction >> 16) & 0xf;
-    auto const operand2 = (instruction & 0xff) << (2 * ((instruction >> 8) & 0xf));
-    auto const res = (m_registers[rd] = m_registers[rn] & operand2);
-    if (instruction & (1_u32 << 20)) {
-        m_registers.cpsr().set_ccf(ccf::z, not res);
-        m_registers.cpsr().set_ccf(ccf::n, res & (1_u32 << 31));
-    }
-}
-auto arm7tdmi::arm_andrs(u32 const instruction)
-    -> void {
-    auto const rd = (instruction >> 12) & 0xf;
-    auto const rn = (instruction >> 16) & 0xf;
-    auto const shift_amount = m_registers[(instruction >> 8) & 0xf] & 0xff;
-    auto const [operand2, carry] = rshift( (instruction >> 5) & 0x3,
-        m_registers[instruction & 0xf], 
-        shift_amount, 
-        m_registers.cpsr().check_ccf(ccf::c)
-    );
-    auto const res = (m_registers[rd] = m_registers[rn] & operand2);
-    if (instruction & (1_u32 << 20)) {
-        m_registers.cpsr().set_ccf(ccf::c, carry);
-        m_registers.cpsr().set_ccf(ccf::z, not res);
-        m_registers.cpsr().set_ccf(ccf::n, res & (1_u32 << 31));
-    }
-}
+GEN_ARM_DATA_PROCESSING
+
 }

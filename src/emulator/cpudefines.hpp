@@ -97,14 +97,46 @@ enum registers {
 };
 
 enum arm_instruction_set {
+    //
+    /// BRANCHING
+    //
+
     bx = 0, b, bl,
+
     //
     /// DATA PROCESSING
     //
-    //and group
-    andlsl0, andrrx, and_,
-    andrs,
-    andi,
+#define GEN_SHIFT_VARIATIONS(name) \
+    name ## lsr32, name ## asr32, name ## rrx, name ## lsl, name ## lsr, name ## asr, name ## ror, \
+    name ## rslsl, name ## rslsr, name ## rsasr, name ## rsror
+    /// LOGICAL GROUP
+
+    // and
+    and_, GEN_SHIFT_VARIATIONS(and_), 
+    and_s, GEN_SHIFT_VARIATIONS(and_s), 
+    and_i, and_is,
+
+    /// NO DESTINATION LOGICAL GROUP
+
+    // tst
+    tst, GEN_SHIFT_VARIATIONS(tst), 
+    tsti,
+
+    /// ARITHMETIC GROUP
+
+    /// NO DESTINATION ARITHMETIC GROUP
+
+    /// SINGLE OPERAND GROUP
+
+    // mov
+    mov, GEN_SHIFT_VARIATIONS(mov), 
+    movs, GEN_SHIFT_VARIATIONS(movs), 
+    movi, movis,
+    // movn
+    movn, GEN_SHIFT_VARIATIONS(movn), 
+    movns, GEN_SHIFT_VARIATIONS(movns), 
+    movni, movnis,
+#undef GEN_SHIFT_VARIATIONS
     undefined,
 };
 

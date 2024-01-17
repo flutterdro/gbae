@@ -4,7 +4,7 @@
 #include <iostream>
 #include <source_location>
 
-#include "../defines.hpp"
+#include "../cpudefines.hpp"
 #include "../utility/fatexception.hpp"
 
 namespace fgba::mmu {

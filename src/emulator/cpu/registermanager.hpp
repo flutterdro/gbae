@@ -5,7 +5,7 @@
 #include <cstddef>
 #include <cassert>
 
-#include "../defines.hpp"
+#include "../cpudefines.hpp"
 
 namespace fgba::cpu {
 
