@@ -68,8 +68,13 @@ constexpr auto arm_instruction_init() {
         .opcode = 0x0,
     };
     GEN_SHIFT_VARIATIONS(movns);
+
+    return ret;
 };
 #undef GEN_SHIFT_VARIATIONS
+#undef GEN_SPECIFIC_SHIFT
+
+const std::array opcodes = arm_instruction_init(); 
 
 }
 

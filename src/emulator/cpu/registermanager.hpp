@@ -22,7 +22,7 @@ struct psr {
         -> void {
         val &= ~flag; 
     }
-    constexpr auto check_ccf(ccf const flag) noexcept
+    constexpr auto check_ccf(ccf const flag) const noexcept
         -> bool {
         return val & flag;
     }
