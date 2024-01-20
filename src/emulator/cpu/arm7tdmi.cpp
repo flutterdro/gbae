@@ -28,7 +28,7 @@ auto arm7tdmi::advance_execution() -> void {
 auto arm7tdmi::execute_arm(u32 const instruction) -> void {
     arm_instruction_set candidate = bx; 
     for (;candidate < undefined; candidate = static_cast<arm_instruction_set>(candidate + 1)) {      
-        if ((instruction & arm_instruction_mask[candidate]) == arm_instruction_opc[candidate]) {
+        if ((instruction & opcodes[candidate].mask) == opcodes[candidate].opcode) {
             break;
         }
     }

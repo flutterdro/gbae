@@ -1,7 +1,7 @@
 target_sources(emulator 
     PRIVATE
         FILE_SET headers TYPE HEADERS FILES
-            defines.hpp
+            cpudefines.hpp
             gbaemu.hpp
             cpu/arm7tdmi.hpp
             cpu/bus.hpp

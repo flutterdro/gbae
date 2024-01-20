@@ -10,10 +10,9 @@
 
 namespace fgba {
 [[nodiscard]]auto disassemble_arm(std::span<std::byte const>) -> std::vector<std::string>;
-[[nodiscard]]auto disassemble_arm(u32) -> std::vector<std::string>;
+[[nodiscard]]auto disassemble_arm(u32) -> std::string;
 [[nodiscard]]auto disassemble_thumb(std::span<std::byte const>) -> std::vector<std::string>;
-[[nodiscard]]auto disassemble_thumb(u16) -> std::vector<std::string>;
-
+[[nodiscard]]auto disassemble_thumb(u16) -> std::string;
 
 }
 
