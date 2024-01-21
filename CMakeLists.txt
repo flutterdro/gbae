@@ -20,6 +20,28 @@ else()
     endif()
 endif()
 
+set(FGBA_WARNING_FLAGS 
+    -Wall
+    -Wextra
+    -Wshadow
+    -Wmove
+    -Wnon-virtual-dtor
+    -Wold-style-cast
+    -Wcast-align
+    -Wunused
+    -Woverloaded-virtual
+    -Wpedantic
+    -Wconversion
+    -Wsign-conversion
+    -Wnull-dereference
+    -Wdouble-promotion
+)
+set(FGBA_SAFETY_FLAGS 
+    -fsanitize=address 
+    -fsanitize=undefined 
+    -fstack-protector-strong 
+    -fstack-clash-protection
+)
 
 add_executable(emulator)
 add_subdirectory(deps)
@@ -28,27 +50,37 @@ add_subdirectory(tests)
 add_subdirectory(src/utility)
 add_subdirectory(src)
 
-target_compile_options(emulator 
-    PUBLIC 
-        -fsanitize=address 
-        -fsanitize=undefined
-        -flto
-        -fexperimental-library
+target_compile_definitions(emulator
+    PUBLIC
+    $<$<CONFIG:Debug>:
+        _LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_DEBUG
+    >
+)
+target_compile_options(emulator
+    PUBLIC "$<$<CONFIG:Debug>:${FGBA_SAFETY_FLAGS}>"
+    PRIVATE "$<$<CONFIG:Debug>:${FGBA_WARNING_FLAGS}>"
+    PUBLIC $<$<CONFIG:Release>: -flto>
+    PUBLIC -fexperimental-library
 )
 target_link_options(emulator 
     PUBLIC 
-        -fsanitize=address
+    $<$<CONFIG:Debug>:
+        -fsanitize=address 
         -fsanitize=undefined
+    >
+    PUBLIC $<$<CONFIG:Release>:
         -flto
+    >
 )
 
 target_link_libraries(emulator 
-    PUBLIC 
+    PRIVATE 
         fmt
         spdlog
         glfw
         glm
         imgui
+        glad
 )
 
 

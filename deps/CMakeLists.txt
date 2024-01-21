@@ -7,12 +7,13 @@ add_subdirectory(Catch2)
 add_subdirectory(glfw)
 add_subdirectory(glm)
 
-target_include_directories(emulator 
+add_library(glad)
+target_include_directories(glad
     PUBLIC
         $<$<CONFIG:DEBUG>:${CMAKE_CURRENT_LIST_DIR}/glad/debug/include>
         $<$<CONFIG:RELEASE>:${CMAKE_CURRENT_LIST_DIR}/glad/release/include>
 )
-target_sources(emulator 
+target_sources(glad 
     PRIVATE
         $<$<CONFIG:DEBUG>:${CMAKE_CURRENT_LIST_DIR}/glad/debug/src/gl.c>
         $<$<CONFIG:RELEASE>:${CMAKE_CURRENT_LIST_DIR}/glad/release/src/gl.c>

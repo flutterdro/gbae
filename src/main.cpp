@@ -10,6 +10,7 @@
 #include <ranges>
 #include <expected>
 #include <span>
+#include <coroutine>
 
 #include <fmt/core.h>
 #include <glad/gl.h>
@@ -87,8 +88,8 @@ void display_psr(fgba::cpu::psr psr) {
         ImGuiTableFlags_PreciseWidths
         |ImGuiTableFlags_NoHostExtendX
         |ImGuiTableFlags_Borders;
-    ImGui::PushStyleColor(ImGuiCol_TableBorderStrong, ImVec4{0.7, 0.7, 0.7, 1.0});
-    ImGui::PushStyleColor(ImGuiCol_TableBorderLight, ImVec4{0.7, 0.7, 0.7, 1.0});
+    ImGui::PushStyleColor(ImGuiCol_TableBorderStrong, ImVec4{0.7f, 0.7f, 0.7f, 1.0f});
+    ImGui::PushStyleColor(ImGuiCol_TableBorderLight, ImVec4{0.7f, 0.7f, 0.7f, 1.0f});
     if (ImGui::BeginTable("##condition code flags", 12, table_flags)) {
         ImGuiTableColumnFlags column_flags = ImGuiTableColumnFlags_WidthFixed;
         auto text_width = 0.0f;
@@ -143,7 +144,7 @@ void some(fgba::cpu::register_manager const& rm) {
         |ImGuiWindowFlags_NoCollapse
         |ImGuiWindowFlags_NoResize;
     ImGui::SetNextWindowSize(ImVec2{400, 400});
-    ImGui::Begin("cpu state", nullptr, wflags);
+    if (not ImGui::Begin("cpu state", nullptr, wflags)) { return; }
     std::array items{
         "bin",
         "oct",
@@ -151,13 +152,11 @@ void some(fgba::cpu::register_manager const& rm) {
         "hex"
     };
     static int selected = 3;
-    auto a = 'a';
     ImGuiTableFlags table_flags = 
         ImGuiTableFlags_PreciseWidths
         |ImGuiTableFlags_NoHostExtendX
         |ImGuiTableFlags_Borders
         |ImGuiTableFlags_RowBg;
-    float width;
     // ImGui::BeginMenu("data");
     // ImGui::EndMenu();
     ImGui::BeginGroup();
@@ -175,13 +174,13 @@ void some(fgba::cpu::register_manager const& rm) {
                     case 1: return "{:#018o}";
                     case 2: return "{:d}";
                     case 3: return "{:#010x}";
-                    default: assert(false);
+                    default: assert(false); return "";
                 }
             }()
         };
         ImGui::PushStyleColor(ImGuiCol_TableRowBg, ImVec4());
         ImGui::PushStyleColor(ImGuiCol_TableRowBgAlt, ImVec4());
-        for (int i = 0; i < 14; ++i) {
+        for (size_t i = 0; i < 14; ++i) {
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0);
             ImGui::TextFmt("r{}", i);
@@ -245,12 +244,12 @@ int main(int argc, char* argv[]) try {
     glfwGetFramebufferSize(window.get(), &widthf, &heightf);
     glViewport(0, 0, widthf, heightf);
 
-    glm::mat4 projection = glm::ortho(0.0f, 800.0f, 600.0f, 0.0f, -1.0f, 1.0f);
-    ImFont* font = io.Fonts->AddFontFromFileTTF("../asset/fonts/ComicShannsMono/ComicShannsMonoNerdFontMono-Regular.otf", 14.0);
+    [[maybe_unused]]glm::mat4 projection = glm::ortho(0.0f, 800.0f, 600.0f, 0.0f, -1.0f, 1.0f);
+    [[maybe_unused]]ImFont* font = io.Fonts->AddFontFromFileTTF("../asset/fonts/ComicShannsMono/ComicShannsMonoNerdFontMono-Regular.otf", 14.0);
     // ImGui::PushFont(font);
 
     while (not glfwWindowShouldClose(window.get())) {
-        glfwPollEvents();
+        glfwWaitEvents();
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();

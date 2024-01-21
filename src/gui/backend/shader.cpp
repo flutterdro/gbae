@@ -118,7 +118,7 @@ shader_program::shader_program(std::filesystem::path const& shader_dir) {
             shader_type = GL_FRAGMENT_SHADER;
         } else if (extension == ".gs") {
             shader_type = GL_GEOMETRY_SHADER;
-        }
+        } else throw fgba::runtime_error("invalid extension");
         std::string src = load_src_from_file(entry.path());
         shaders.emplace_back(shader::source{.code = src.c_str(), .type = shader_type});
     }

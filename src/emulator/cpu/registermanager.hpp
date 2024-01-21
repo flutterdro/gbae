@@ -77,7 +77,7 @@ m_active_registers_offset[registers::pc] = registers::pc_ ## mode;\
 class register_manager {
 public:
     constexpr register_manager() noexcept {
-        for (size_t i = 0; i < 16; ++i) {
+        for (u32 i = 0; i < 16; ++i) {
             m_active_registers_offset[i] = i;
         }
     }

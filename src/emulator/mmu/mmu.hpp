@@ -1,5 +1,6 @@
 #ifndef GBA_MMU_H_
 #define GBA_MMU_H_
+#include <cstddef>
 #include <fstream>
 #include <iostream>
 #include <source_location>
@@ -46,7 +47,7 @@ public:
         if (std::ifstream file{path, std::ios::binary | std::ios::ate}) {
             auto& sys_rom{m_memory[0]};
             auto size{file.tellg()};
-            if (sys_rom.size() < size) {
+            if (sys_rom.size() < static_cast<size_t>(size)) {
                 throw fgba::runtime_error{"binary size mismatch", std::source_location::current()};
             }
             file.seekg(0);

@@ -5,7 +5,7 @@
 namespace fgba {
 
 gameboy_advance::gameboy_advance()
-    : m_mmu{}, m_cpu{} {
+    : m_cpu{}, m_mmu{} {
     m_cpu.conect_read(
         [&mmu = this->m_mmu](cpu::bus::signals signals) 
             -> u32 {

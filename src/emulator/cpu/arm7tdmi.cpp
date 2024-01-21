@@ -35,13 +35,16 @@ auto arm7tdmi::execute_arm(u32 const instruction) -> void {
     (*this.*(m_arm_impl[candidate]))(instruction);
 }
 
+auto arm7tdmi::execute_thumb(u16)
+    -> void {}
+
 auto arm7tdmi::prefetch() -> void {
     bool is_thumb = m_registers.cpsr().is_thumb();
     bus::signals const signal{
-        .address{m_registers.pc()},
-        .mas{2u - is_thumb},
-        .nopc{0},
-        .tbit{is_thumb}
+        .address = m_registers.pc(),
+        .mas     = 2u - is_thumb,
+        .nopc    = 0,
+        .tbit    = is_thumb
     };
     m_prefetch_buffer.push(m_bus.read(signal));
     m_registers.pc() += 4 - 2 * is_thumb;
@@ -67,7 +70,10 @@ auto arm7tdmi::arm_bx(u32 const instruction)
 auto arm7tdmi::arm_b(u32 const instruction)
     -> void {
     flush();
-    m_registers.pc() += signextend<i32, 24>((instruction & 0xffffff) << 2) - 8;
+    m_registers.pc() += std::bit_cast<u32>(
+        signextend<i32, 24>(static_cast<i32>((instruction & 0xffffff_u32) << 2))
+    );
+    m_registers.pc() -= 8;
     prefetch();
     prefetch();
 }
@@ -75,7 +81,10 @@ auto arm7tdmi::arm_bl(u32 const instruction)
     -> void {
     m_registers[14] = m_registers.pc() - 4;
     flush();
-    m_registers.pc() += signextend<i32, 24>((instruction & 0xffffff) << 2) - 8;
+    m_registers.pc() += std::bit_cast<u32>(
+        signextend<i32, 24>(static_cast<i32>((instruction & 0xffffff_u32) << 2))
+    );
+    m_registers.pc() -= 8;
     prefetch();
     prefetch();
 }
@@ -135,7 +144,6 @@ auto arm7tdmi::arm_##arm_instruction_base##s##shift_type(u32 const instruction) 
 }
 #define GEN_ARM_LOGICAL_OPERATION_NORESULT_WITH_SHIFT(arm_instruction_base, operator, shift_type)\
 auto arm7tdmi::arm_##arm_instruction_base##shift_type(u32 const instruction) noexcept -> void {\
-    auto const rd = (instruction >> 12) & 0xf;\
     auto const rn = (instruction >> 16) & 0xf;\
     auto const rm = (instruction >>  0) & 0xf;\
     [[maybe_unused]]auto const shift_info = (instruction >> 7) & 0b11111;\

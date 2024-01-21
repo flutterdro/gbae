@@ -18,19 +18,19 @@ constexpr auto asr(u32 data, u32 amount) noexcept
     -> u32 { return std::bit_cast<u32>(std::bit_cast<i32>(data) >> amount); }
 constexpr auto shift(u32, u32 operand, register_manager const&) noexcept
     -> u32 { return operand; }
-constexpr auto shiftlsr32(u32, u32 operand, register_manager const&) noexcept
+constexpr auto shiftlsr32(u32, u32, register_manager const&) noexcept
     -> u32 { return 0; }
 constexpr auto shiftasr32(u32, u32 operand, register_manager const&) noexcept
     -> u32 { return asr(operand, 31); }
 constexpr auto shiftrrx(u32, u32 operand, register_manager const& rm) noexcept 
-    -> u32 { return (operand >> 1) | (rm.cpsr().check_ccf(ccf::c) << 31); }
+    -> u32 { return (operand >> 1) | (static_cast<u32>(rm.cpsr().check_ccf(ccf::c)) << 31); }
 constexpr auto shiftlsl(u32 shift_info, u32 operand, register_manager const&) noexcept 
     -> u32 { assert(shift_info != 0); return operand << shift_info; }
-constexpr auto shiftlsr(u32 shift_info, u32 operand, register_manager const& rm) noexcept 
+constexpr auto shiftlsr(u32 shift_info, u32 operand, register_manager const&) noexcept 
     -> u32 { assert(shift_info != 0); return operand >> shift_info; }
-constexpr auto shiftasr(u32 shift_info, u32 operand, register_manager const& rm) noexcept 
+constexpr auto shiftasr(u32 shift_info, u32 operand, register_manager const&) noexcept 
     -> u32 { assert(shift_info != 0); return asr(operand, shift_info); }
-constexpr auto shiftror(u32 shift_info, u32 operand, register_manager const& rm) noexcept 
+constexpr auto shiftror(u32 shift_info, u32 operand, register_manager const&) noexcept 
     -> u32 { assert(shift_info != 0); return (operand >> shift_info) | (operand << (32 - shift_info)); }
 constexpr auto shiftrslsl(u32 shift_info, u32 operand, register_manager const& rm) noexcept 
     -> u32 { 
@@ -63,8 +63,8 @@ constexpr auto shiftlsr32_s(u32, u32 operand, register_manager const&) noexcept
     -> shift_res { return {0, static_cast<bool>(operand & (1_u32 << 31))}; }
 constexpr auto shiftasr32_s(u32, u32 operand, register_manager const&) noexcept 
     -> shift_res { return {asr(operand, 31), static_cast<bool>(operand & (1_u32 << 31))}; }
-constexpr auto shiftrrx_s(u32 shift_info, u32 operand, register_manager const& rm) noexcept 
-    -> shift_res { return {(operand >> 1) | (rm.cpsr().check_ccf(ccf::c) << 31), static_cast<bool>(operand & 1)}; }
+constexpr auto shiftrrx_s(u32, u32 operand, register_manager const& rm) noexcept 
+    -> shift_res { return {(operand >> 1) | (static_cast<u32>(rm.cpsr().check_ccf(ccf::c)) << 31), static_cast<bool>(operand & 1)}; }
 constexpr auto shiftlsl_s(u32 shift_info, u32 operand, register_manager const&) noexcept 
     -> shift_res { assert(shift_info != 0); return {operand << shift_info, static_cast<bool>(operand & (1_u32 << (32 - shift_info)))}; }
 constexpr auto shiftlsr_s(u32 shift_info, u32 operand, register_manager const&) noexcept 
