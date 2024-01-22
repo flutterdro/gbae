@@ -8,7 +8,7 @@
 
 namespace fgba {
 template<size_t size>
-using readonly_ptr = std::unique_ptr<std::array<std::byte const, size> const>;
+using readonly_ptr = std::unique_ptr<std::array<std::byte, size> const>;
 template<size_t size>
 using readwrite_ptr = std::unique_ptr<std::array<std::byte, size>>;
 using mem_region = std::vector<std::byte>;

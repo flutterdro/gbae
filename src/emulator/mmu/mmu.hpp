@@ -43,19 +43,7 @@ public:
         -> void;
 
     auto load_bios(std::filesystem::path const& path) 
-        -> void {
-        if (std::ifstream file{path, std::ios::binary | std::ios::ate}) {
-            auto& sys_rom{m_memory[0]};
-            auto size{file.tellg()};
-            if (sys_rom.size() < static_cast<size_t>(size)) {
-                throw fgba::runtime_error{"binary size mismatch", std::source_location::current()};
-            }
-            file.seekg(0);
-            file.read(reinterpret_cast<char*>(sys_rom.data()), size);
-        } else {
-            throw fgba::runtime_error{"couldn't open a file", std::source_location::current()};
-        }
-    }
+        -> void;
     auto load_gamerom(std::filesystem::path const& path_to_cartridge)
         -> void;
 private:
