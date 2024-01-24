@@ -1,9 +1,12 @@
 #include "mmu.hpp"
+#include "cpudefines.hpp"
 #include "fatexception.hpp"
 
+#include <array>
 #include <cstddef>
 #include <filesystem>
 #include <fstream>
+#include <memory>
 #include <ranges>
 #include <algorithm>
 #include <source_location>
@@ -164,4 +167,6 @@ auto memory_managment_unit::write<32>(address address, bus_data<32> data)
       break;
     }
 }
+
+
 }

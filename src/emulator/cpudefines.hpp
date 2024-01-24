@@ -1,12 +1,65 @@
 #ifndef FGBA_DEFINES_HPP
 #define FGBA_DEFINES_HPP
+#include "fatexception.hpp"
+#include <cassert>
+#include <cstring>
+#include <functional>
+#include <span>
+#include <type_traits>
 #include <utility>
 #include <cstddef>
 #include <memory>
 #include <ranges>
 #include <vector>
+#include <bit>
+#include <algorithm>
+//Utility header where helpers and aliases are defined
 
 namespace fgba {
+namespace stdr = std::ranges;
+//to be completely portable I should've used uint_least32_t etc but it complicates things way too much
+using u32 = std::uint32_t;
+consteval auto operator""_u32(unsigned long long i) 
+    -> u32 { return static_cast<u32>(i); }
+using u16 = std::uint16_t;
+consteval auto operator""_u16(unsigned long long i) 
+    -> u16 { return static_cast<u16>(i); }
+using u8  = std::uint8_t;
+consteval auto operator""_u8(unsigned long long i) 
+    -> u8 { return static_cast<u8>(i); }
+using i32 = std::int32_t;
+consteval auto operator""_i32(unsigned long long i) 
+    -> i32 { return static_cast<i32>(i); }
+using i16 = std::int16_t;
+consteval auto operator""_i16(unsigned long long i) 
+    -> i16 { return static_cast<i16>(i); }
+using i8  = std::int8_t;
+consteval auto operator""_i8(unsigned long long i) 
+    -> i8 { return static_cast<i8>(i); }
+using address = u32;
+template<size_t Extent = std::dynamic_extent>
+using readonlymem_view = std::span<std::byte const, Extent>;
+template<size_t Extent = std::dynamic_extent>
+using readwritemem_view = std::span<std::byte, Extent>;
+template<size_t Size>
+using memchunk = std::array<std::byte, Size>;
+
+//no constexpr because memcpy isn't constexpr
+inline auto word_from_bytes(readonlymem_view<4> bytes) noexcept
+    -> u32 {
+    static_assert(std::endian::native == std::endian::little, "I do not support big endian yet");
+    u32 res;
+    //memcpy is used because std::bit_cast doesn't work with std::span
+    std::memcpy(&res, bytes.data(), sizeof(u32));
+    return res;
+}
+inline auto halfword_from_bytes(readonlymem_view<2> bytes) noexcept
+    -> u32 {
+    static_assert(std::endian::native == std::endian::little, "I do not support big endian yet");
+    u32 res;
+    std::memcpy(&res, bytes.data(), sizeof(u16));
+    return res;
+}
 template<size_t size>
 using readonly_ptr = std::unique_ptr<std::array<std::byte, size> const>;
 template<size_t size>
@@ -43,27 +96,7 @@ constexpr auto split_bus(bus_data<bus_size> const& data) noexcept
     -> std::pair<bus_data<bus_size/2>, bus_data<bus_size/2>>{
     return split_bus_impl<bus_size>(data, std::make_index_sequence<bus_size/16>{});
 }
-
-using u32 = std::uint32_t;
-consteval auto operator""_u32(unsigned long long i) 
-    -> u32 { return static_cast<u32>(i); }
-using u16 = std::uint16_t;
-consteval auto operator""_u16(unsigned long long i) 
-    -> u16 { return static_cast<u16>(i); }
-using u8  = std::uint8_t;
-consteval auto operator""_u8(unsigned long long i) 
-    -> u8 { return static_cast<u8>(i); }
-using i32 = std::int32_t;
-consteval auto operator""_i32(unsigned long long i) 
-    -> i32 { return static_cast<i32>(i); }
-using i16 = std::int16_t;
-consteval auto operator""_i16(unsigned long long i) 
-    -> i16 { return static_cast<i16>(i); }
-using i8  = std::int8_t;
-consteval auto operator""_i8(unsigned long long i) 
-    -> i8 { return static_cast<i8>(i); }
-using address = u32;
-constexpr std::byte uninitialized_byte{0xcd};
+constexpr std::byte uninitialized_byte{0xeb};
 namespace stdr = std::ranges;
 namespace stdv = std::views;
 

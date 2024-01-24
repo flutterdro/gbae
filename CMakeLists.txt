@@ -40,7 +40,6 @@ set(FGBA_SAFETY_FLAGS
     -fsanitize=address 
     -fsanitize=undefined 
     -fstack-protector-strong 
-    -fstack-clash-protection
 )
 
 add_executable(emulator)

@@ -2,6 +2,21 @@
     "files.associations": {
         "expected": "cpp",
         "iostream": "cpp",
-        "stacktrace": "cpp"
+        "stacktrace": "cpp",
+        "__availability": "cpp",
+        "__config": "cpp",
+        "__hash_table": "cpp",
+        "__tree": "cpp",
+        "__verbose_abort": "cpp",
+        "atomic": "cpp",
+        "charconv": "cpp",
+        "exception": "cpp",
+        "functional": "cpp",
+        "optional": "cpp",
+        "string": "cpp",
+        "tuple": "cpp",
+        "variant": "cpp",
+        "algorithm": "cpp",
+        "complex": "cpp"
     }
 }

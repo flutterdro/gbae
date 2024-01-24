@@ -7,6 +7,7 @@ target_sources(emulator
             cpu/bus.hpp
             cpu/disassembler/disassembler.hpp
             mmu/mmu.hpp
+            mmu/memoryprimitives.hpp
             cpu/registermanager.hpp
     PRIVATE
         mmu/mmu.cpp
