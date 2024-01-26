@@ -19,12 +19,15 @@ namespace fgba {
 namespace stdr = std::ranges;
 //to be completely portable I should've used uint_least32_t etc but it complicates things way too much
 using u32 = std::uint32_t;
+static_assert(sizeof(u32) == 4 * sizeof(std::byte), "God is dead");
 consteval auto operator""_u32(unsigned long long i) 
     -> u32 { return static_cast<u32>(i); }
 using u16 = std::uint16_t;
+static_assert(sizeof(u16) == 2 * sizeof(std::byte), "God remains dead");
 consteval auto operator""_u16(unsigned long long i) 
     -> u16 { return static_cast<u16>(i); }
 using u8  = std::uint8_t;
+static_assert(sizeof(u8) == sizeof(std::byte), "And we killed him");
 consteval auto operator""_u8(unsigned long long i) 
     -> u8 { return static_cast<u8>(i); }
 using i32 = std::int32_t;

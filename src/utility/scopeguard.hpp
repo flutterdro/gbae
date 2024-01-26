@@ -29,5 +29,6 @@ public:
 private:
     EF m_exit_func;
 };
+
 }
 #endif
