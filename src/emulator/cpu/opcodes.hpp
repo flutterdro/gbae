@@ -58,16 +58,16 @@ constexpr auto arm_instruction_init() {
         .opcode = 0x0,
     };
     GEN_SHIFT_VARIATIONS(mov);
-    ret[arm_instruction_set::movs] = {
-        .mask   = 0x0,
-        .opcode = 0x0,
-    };
-    GEN_SHIFT_VARIATIONS(movs);
-    ret[arm_instruction_set::movns] = {
-        .mask   = 0x0,
-        .opcode = 0x0,
-    };
-    GEN_SHIFT_VARIATIONS(movns);
+    // ret[arm_instruction_set::movs] = {
+    //     .mask   = 0x0,
+    //     .opcode = 0x0,
+    // };
+    // GEN_SHIFT_VARIATIONS(movs);
+    // ret[arm_instruction_set::mvns] = {
+    //     .mask   = 0x0,
+    //     .opcode = 0x0,
+    // };
+    // GEN_SHIFT_VARIATIONS(mvns);
 
     return ret;
 };

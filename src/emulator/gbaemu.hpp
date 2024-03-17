@@ -6,6 +6,7 @@
 
 #include "cpu/arm7tdmi.hpp"
 #include "mmu/mmu.hpp"
+#include "ppu/ppu.hpp"
 
 namespace fgba {
 class gameboy_advance {
@@ -21,6 +22,7 @@ public:
         }
 private:
     cpu::arm7tdmi m_cpu;
+    ppu::ppu m_ppu;
     mmu::memory_managment_unit m_mmu;
 };
 }

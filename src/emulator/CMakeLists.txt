@@ -16,4 +16,5 @@ target_sources(emulator
         cpu/disassembler/disassembler.cpp
         cpu/registermanager.cpp
         gbaemu.cpp
+        cpu/instruction-implementation/implementation.cpp
 )

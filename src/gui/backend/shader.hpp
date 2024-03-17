@@ -6,6 +6,7 @@
 #include <memory>
 #include <string>
 #include <span>
+#include "resource.hpp"
 
 #include <glm/glm.hpp>
 

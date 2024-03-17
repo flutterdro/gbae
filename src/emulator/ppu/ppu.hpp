@@ -4,35 +4,43 @@
 #include <bit>
 #include <cstddef>
 #include <span>
+#include <mdspan>
+#include <sys/_types/_uintptr_t.h>
 
 #include "cpudefines.hpp"
-
+#include "registers.hpp"
+#include "spdlog/spdlog.h"
+#include "mmu/memoryprimitives.hpp"
+namespace fgba::mmu {
+class io_registers_map;
+}
 namespace fgba::ppu {
+using pram_spec     = mem_spec<bounds<0x05000000, 0x05000400>, mem_type::ram, bus_size::hword>;
+using vram_spec     = mem_spec<bounds<0x06000000, 0x06018000>, mem_type::ram, bus_size::hword>;
+using oam_spec      = mem_spec<bounds<0x07000000, 0x07000400>, mem_type::ram, bus_size::hword>;
 class ppu {
-    struct dipscnt {
-        u16 bg_mode                : 3;
-        u16 cgb_mode               : 1;
-        u16 frame                  : 1;
-        u16 hblank_oam_access      : 1;
-        u16 obj_vram_mapping       : 1;
-        u16 forced_blank           : 1;
-        u16 screen_display_bg0     : 1;
-        u16 screen_display_bg1     : 1;
-        u16 screen_display_bg2     : 1;
-        u16 screen_display_bg3     : 1;
-        u16 screen_display_obj     : 1;
-        u16 window0_display_flag   : 1;
-        u16 window1_display_flag   : 1;
-        u16 objwindow_display_flag : 1;
-        [[nodiscard]] auto to_u16() const noexcept 
-            -> u16 { return std::bit_cast<u16>(*this); } 
-    };
-    static_assert(sizeof(dipscnt) == sizeof(u16), "Dipscnt must be 16 bit wide\n"
-    "Your compiler seems to handle bitfields in a... quirky way. Try a different compiler");
-
+    friend class mmu::io_registers_map;
+public:
+    ppu() = default;
+    [[nodiscard]]auto get_display_view() const noexcept
+        -> lcd_display_view;
+    auto get_vram()
+        -> mmu::mem_owner<vram_spec>& { return m_vram; }
+    auto get_pram()
+        -> mmu::mem_owner<pram_spec>& { return m_pram; }
+    auto get_oam()
+        -> mmu::mem_owner<oam_spec>& { return m_oam; }
 private:
-    std::span<std::byte, 0x06017fff - 0x06000000 + 1> const m_vram_view;
-    dipscnt m_lcd_control;
+    auto mode3() noexcept
+        -> void;
+private:
+    mmu::mem_owner<vram_spec> m_vram;
+    mmu::mem_owner<pram_spec> m_pram;
+    mmu::mem_owner<oam_spec> m_oam;
+    std::array<std::byte, 240 * 160 * 3> m_display;
+    dispcnt m_dispcnt;
+    dispstat m_dispstat;
+    vcount m_vcount;
 };
 }
 

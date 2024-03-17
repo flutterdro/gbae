@@ -3,9 +3,9 @@
 #include "mmu/mmu.hpp"
 #include <source_location>
 namespace fgba {
-
+static std::vector<std::byte> dummy;
 gameboy_advance::gameboy_advance()
-    : m_cpu{}, m_mmu{} {
+    : m_cpu{}, m_ppu{}, m_mmu{m_ppu} {
     m_cpu.conect_read(
         [&mmu = this->m_mmu](cpu::bus::signals signals) 
             -> u32 {

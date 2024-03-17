@@ -1,16 +1,18 @@
 #ifndef SHIFTER_HPP_
 #define SHIFTER_HPP_
 
+#include <__bit/rotate.h>
 #include <cassert>
 #include <cstdint>
 #include <bit>
-#include "cpudefines.hpp"
+#include "../cpudefines.hpp"
 #include "registermanager.hpp"
 namespace fgba::cpu {
 namespace shifter {
 namespace {
 
 struct shift_res {
+    auto operator<=>(shift_res const&) const = default;
     u32 shifted_data;
     bool carryout;
 };
@@ -31,7 +33,7 @@ constexpr auto shiftlsr(u32 shift_info, u32 operand, register_manager const&) no
 constexpr auto shiftasr(u32 shift_info, u32 operand, register_manager const&) noexcept 
     -> u32 { assert(shift_info != 0); return asr(operand, shift_info); }
 constexpr auto shiftror(u32 shift_info, u32 operand, register_manager const&) noexcept 
-    -> u32 { assert(shift_info != 0); return (operand >> shift_info) | (operand << (32 - shift_info)); }
+    -> u32 { assert(shift_info != 0); return std::rotr(operand, shift_info); }
 constexpr auto shiftrslsl(u32 shift_info, u32 operand, register_manager const& rm) noexcept 
     -> u32 { 
     // I actually have no clue why I use auto. u32 - 3 symbols, auto - 4 symbols. me dumdum
@@ -53,9 +55,8 @@ constexpr auto shiftrsasr(u32 shift_info, u32 operand, register_manager const& r
 }
 constexpr auto shiftrsror(u32 shift_info, u32 operand, register_manager const& rm) noexcept 
     -> u32 { 
-    auto const shift_amount = (rm[shift_info >> 1] & 0xff) % 32;
-    if (shift_amount == 0) return operand;
-    return (operand >> shift_amount) | (operand << (32 - shift_amount));
+    auto const shift_amount = (rm[shift_info >> 1] & 0xff);
+    return std::rotr(operand, shift_amount);
 }
 constexpr auto shift_s(u32, u32 operand, register_manager const& rm) noexcept 
     -> shift_res { return {operand, rm.cpsr().check_ccf(ccf::c)}; }
@@ -72,7 +73,7 @@ constexpr auto shiftlsr_s(u32 shift_info, u32 operand, register_manager const&) 
 constexpr auto shiftasr_s(u32 shift_info, u32 operand, register_manager const&) noexcept 
     -> shift_res { assert(shift_info != 0); return {asr(operand, shift_info), static_cast<bool>(operand & (1_u32 << (shift_info - 1)))}; }
 constexpr auto shiftror_s(u32 shift_info, u32 operand, register_manager const&) noexcept 
-    -> shift_res { assert(shift_info != 0); return {(operand >> shift_info) | (operand << (32 - shift_info)), static_cast<bool>(operand & (1_u32 << (shift_info - 1)))}; }
+    -> shift_res { assert(shift_info != 0); return {std::rotr(operand, shift_info), static_cast<bool>(operand & (1_u32 << (shift_info - 1)))}; }
 constexpr auto shiftrslsl_s(u32 shift_info, u32 operand, register_manager const& rm) noexcept 
     -> shift_res { 
     shift_res ret;

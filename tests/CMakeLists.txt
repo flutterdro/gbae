@@ -1,4 +1,4 @@
-add_executable(tests dummy.cpp)
+add_executable(tests dummy.cpp cpu/shifter.cpp)
 
 target_link_libraries(tests
     PRIVATE 

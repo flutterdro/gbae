@@ -19,16 +19,16 @@ namespace fgba::mmu {
 //     0, -1, 1, 2, 3, 4, 5, 6, 7, 7, 8, 8, 9, 9, 10, -1 
 // };
 
-auto get_region_type(address address) 
-    -> memory_region_type {
-    using enum memory_region_type;
-    constexpr std::array<memory_region_type, 16> region_mapping {
-        sysrom, invalid, ewram, iwram, ioregisters, paletteram, 
-        vram, oam, flashrom0, flashrom0, flashrom1, flashrom1,
-        flashrom2, flashrom2, sram, invalid, 
-    };
-    return region_mapping[(address >> 24) & 0xf];
-}
+// auto get_region_type(address address) 
+//     -> memory_region_type {
+//     using enum memory_region_type;
+//     constexpr std::array<memory_region_type, 16> region_mapping {
+//         sysrom, invalid, ewram, iwram, ioregisters, paletteram, 
+//         vram, oam, flashrom0, flashrom0, flashrom1, flashrom1,
+//         flashrom2, flashrom2, sram, invalid, 
+//     };
+//     return region_mapping[(address >> 24) & 0xf];
+// }
 
 struct bounds {
     u32 upper;
@@ -45,10 +45,10 @@ struct bounds {
 //     bounds{0x0DFFFFFF, 0x0C000000}, bounds{0x0E00FFFF, 0x0E000000}
 // };
 
-auto memory_managment_unit::load_bios(readonlymem_view<> biosbin) 
-    -> void {
-    m_bios = readonlymem<0x00000000, 0x00003fff>(biosbin);
-}
+// auto memory_managment_unit::load_bios(readonlymem_view<> biosbin) 
+//     -> void {
+//     m_bios = readonlymem<0x00000000, 0x00003fff>(biosbin);
+// }
 
 
 }

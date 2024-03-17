@@ -1,6 +1,7 @@
 #ifndef FGBA_DEFINES_HPP
 #define FGBA_DEFINES_HPP
-#include "fatexception.hpp"
+#include <__mdspan/extents.h>
+#include <__mdspan/mdspan.h>
 #include <cassert>
 #include <cstring>
 #include <functional>
@@ -39,6 +40,14 @@ consteval auto operator""_i16(unsigned long long i)
 using i8  = std::int8_t;
 consteval auto operator""_i8(unsigned long long i) 
     -> i8 { return static_cast<i8>(i); }
+template<typename T>
+struct half_width;
+template<>
+struct half_width<u32> { using type = u16; };
+template<>
+struct half_width<u16> { using type = u8; };
+template<typename T>
+using half_width_t = typename half_width<T>::type;
 using address = u32;
 template<size_t Extent = std::dynamic_extent>
 using readonlymem_view = std::span<std::byte const, Extent>;
@@ -46,6 +55,7 @@ template<size_t Extent = std::dynamic_extent>
 using readwritemem_view = std::span<std::byte, Extent>;
 template<size_t Size>
 using memchunk = std::array<std::byte, Size>;
+using lcd_display_view = std::mdspan<std::byte const, std::extents<size_t, 240, 160, 3>>;
 
 //no constexpr because memcpy isn't constexpr
 inline auto word_from_bytes(readonlymem_view<4> bytes) noexcept
@@ -142,36 +152,49 @@ enum arm_instruction_set {
     //
     /// DATA PROCESSING
     //
-#define GEN_SHIFT_VARIATIONS(name) \
+#define GEN_VARIATIONS(name) \
     name ## lsr32, name ## asr32, name ## rrx, name ## lsl, name ## lsr, name ## asr, name ## ror, \
-    name ## rslsl, name ## rslsr, name ## rsasr, name ## rsror
+    name ## rslsl, name ## rslsr, name ## rsasr, name ## rsror, \
+    name ## lsr32 ## s, name ## asr32 ## s, name ## rrx ## s, name ## lsl ## s, name ## lsr ## s, name ## asr ## s, name ## ror ## s, \
+    name ## rslsl ## s, name ## rslsr ## s, name ## rsasr ## s, name ## rsror ## s, \
+    name ## i, name ## is, name ## s, name
+#define GEN_VARIATIONS_NO_S(name) \
+    name ## lsr32, name ## asr32, name ## rrx, name ## lsl, name ## lsr, name ## asr, name ## ror, \
+    name ## rslsl, name ## rslsr, name ## rsasr, name ## rsror, \
+    name ## i, name
     /// LOGICAL GROUP
 
     // and
-    and_, GEN_SHIFT_VARIATIONS(and_), 
-    and_s, GEN_SHIFT_VARIATIONS(and_s), 
-    and_i, and_is,
+    GEN_VARIATIONS(and_),
+    GEN_VARIATIONS(orr), 
+    GEN_VARIATIONS(eor), 
+    GEN_VARIATIONS(bic), 
 
     /// NO DESTINATION LOGICAL GROUP
 
     // tst
-    tst, GEN_SHIFT_VARIATIONS(tst), 
-    tsti,
+    GEN_VARIATIONS_NO_S(tst),
+    GEN_VARIATIONS_NO_S(teq),
 
     /// ARITHMETIC GROUP
+    GEN_VARIATIONS(add), 
+    GEN_VARIATIONS(adc), 
+    GEN_VARIATIONS(sub), 
+    GEN_VARIATIONS(sbc), 
+    GEN_VARIATIONS(rsb), 
+    GEN_VARIATIONS(rsc), 
 
     /// NO DESTINATION ARITHMETIC GROUP
+    GEN_VARIATIONS_NO_S(cmp),
+    GEN_VARIATIONS_NO_S(cmn),
 
     /// SINGLE OPERAND GROUP
 
     // mov
-    mov, GEN_SHIFT_VARIATIONS(mov), 
-    movs, GEN_SHIFT_VARIATIONS(movs), 
-    movi, movis,
+    GEN_VARIATIONS(mov), 
     // movn
-    movn, GEN_SHIFT_VARIATIONS(movn), 
-    movns, GEN_SHIFT_VARIATIONS(movns), 
-    movni, movnis,
+    GEN_VARIATIONS(mvn), 
+    
 #undef GEN_SHIFT_VARIATIONS
     undefined,
 };

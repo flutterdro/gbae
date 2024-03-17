@@ -7,7 +7,7 @@ namespace fgba {
 template<typename EF>
 class scope_fail {
 public:
-    scope_fail(EF&& handler) 
+    [[nodiscard("Scope guard was not named and destructed immediately")]]scope_fail(EF&& handler) 
         : m_exit_func{std::forward<EF>(handler)} {}
     ~scope_fail() {
         if (std::uncaught_exception()) {
@@ -21,7 +21,7 @@ private:
 template<typename EF>
 class scope_exit {
 public:
-    scope_exit(EF&& handler) 
+    [[nodiscard("Scope guard was not named and destructed immediately")]]scope_exit(EF&& handler) 
         : m_exit_func{std::forward<EF>(handler)} {}
     ~scope_exit() {
         std::invoke(m_exit_func);

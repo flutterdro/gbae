@@ -2,6 +2,7 @@
 #include <cstddef>
 #include <exception>
 #include <filesystem>
+#include <functional>
 #include <memory>
 #include <source_location>
 #include <stdexcept>
@@ -18,6 +19,7 @@
 #include <GLFW/glfw3.h>
 #include <spdlog/spdlog.h>
 #include <utility>
+#include "cpu/instruction-implementation.hpp"
 #include "cpu/registermanager.hpp"
 #include "fmt/base.h"
 #include "fmt/format.h"
@@ -35,6 +37,14 @@ constexpr GLuint width = 1280;
 constexpr GLuint height = 720;
 
 using window_ptr = std::unique_ptr<GLFWwindow, decltype([](auto& a) {glfwDestroyWindow(a);})>;
+
+auto test1() -> std::expected<double, std::error_code> {
+    return 0;
+}
+#define TRY(result) result.has_value() ? *result  
+auto test2() -> std::expected<double, std::error_code> {
+    auto res = test1();
+}
 
 [[nodiscard]]auto create_window() 
     -> window_ptr;
@@ -81,6 +91,7 @@ IMGUI_API void vTextFmt(fmt::string_view fmt, Ts&&... args) {
     ImGui::TextUnformatted(&*str.begin(), &*str.end());
 }
 }
+
 
 void display_psr(fgba::cpu::psr psr) {
     ImGui::BeginGroup();
@@ -208,9 +219,12 @@ void some(fgba::cpu::register_manager const& rm) {
     ImGui::EndGroup();
     ImGui::End();
 }
-
 int main(int argc, char* argv[]) try {
     // Setup Dear ImGui context
+    using new_type = int;
+    unsigned other_var{0};
+    int& smth = reinterpret_cast<new_type&>(other_var);
+
 
     fgba::gameboy_advance gba; 
     glfwInit();
