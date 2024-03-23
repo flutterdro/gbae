@@ -4,4 +4,6 @@ target_sources(emulator
             backend/shader.hpp
     PRIVATE
         backend/shader.cpp
+        frontend/devgui/maingui.cpp
+        frontend/display.cpp
 )

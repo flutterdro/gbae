@@ -32,7 +32,7 @@ auto ppu::get_display_view() const noexcept
 }
 auto ppu::mode3() noexcept
     -> void {
-    auto bitmap_view = m_vram_view.subspan<0, 0x14000>();
+    auto bitmap_view = std::span<std::byte, 0x14000>{m_vram};
     //Just for now
     for (u32 i = 0; i < bitmap_view.size(); i += 2) {
         auto [red, green, blue] = gbacolor_to_rgb(mmu::read<u16>(bitmap_view, i));

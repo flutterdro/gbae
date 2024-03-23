@@ -5,6 +5,7 @@
 #include <bit>
 
 #include "cpu/arm7tdmi.hpp"
+#include "cpudefines.hpp"
 #include "mmu/mmu.hpp"
 #include "ppu/ppu.hpp"
 
@@ -20,6 +21,10 @@ public:
         -> cpu::arm7tdmi const& {
             return m_cpu;
         }
+    [[nodiscard]]auto get_display_view() const noexcept
+        -> lcd_display_view {
+        return m_ppu.get_display_view();
+    }
 private:
     cpu::arm7tdmi m_cpu;
     ppu::ppu m_ppu;

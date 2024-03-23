@@ -48,67 +48,8 @@ template<>
 struct half_width<u16> { using type = u8; };
 template<typename T>
 using half_width_t = typename half_width<T>::type;
-using address = u32;
-template<size_t Extent = std::dynamic_extent>
-using readonlymem_view = std::span<std::byte const, Extent>;
-template<size_t Extent = std::dynamic_extent>
-using readwritemem_view = std::span<std::byte, Extent>;
-template<size_t Size>
-using memchunk = std::array<std::byte, Size>;
-using lcd_display_view = std::mdspan<std::byte const, std::extents<size_t, 240, 160, 3>>;
+using lcd_display_view = std::mdspan<std::byte const, std::extents<size_t, 3, 240, 160>>;
 
-//no constexpr because memcpy isn't constexpr
-inline auto word_from_bytes(readonlymem_view<4> bytes) noexcept
-    -> u32 {
-    static_assert(std::endian::native == std::endian::little, "I do not support big endian yet");
-    u32 res;
-    //memcpy is used because std::bit_cast doesn't work with std::span
-    std::memcpy(&res, bytes.data(), sizeof(u32));
-    return res;
-}
-inline auto halfword_from_bytes(readonlymem_view<2> bytes) noexcept
-    -> u32 {
-    static_assert(std::endian::native == std::endian::little, "I do not support big endian yet");
-    u32 res;
-    std::memcpy(&res, bytes.data(), sizeof(u16));
-    return res;
-}
-template<size_t size>
-using readonly_ptr = std::unique_ptr<std::array<std::byte, size> const>;
-template<size_t size>
-using readwrite_ptr = std::unique_ptr<std::array<std::byte, size>>;
-using mem_region = std::vector<std::byte>;
-template<size_t bus_size>
-    requires (bus_size % 8 == 0)
-using bus_data = std::array<std::byte, bus_size/8>;
-template<size_t bus_size, size_t...Is>
-constexpr auto merge_buses_impl(bus_data<bus_size> const& lo, bus_data<bus_size> const& hi, 
-    std::index_sequence<Is...>) noexcept
-    -> bus_data<2 * bus_size> {
-    return bus_data<2 * bus_size>{
-        lo[Is]... ,
-        hi[Is]...
-    };
-}
-template<size_t bus_size>
-constexpr auto merge_buses(bus_data<bus_size> const&  lo, bus_data<bus_size> const& hi) noexcept
-    -> bus_data<2 * bus_size> {
-    return merge_buses_impl<bus_size>(lo, hi, std::make_index_sequence<bus_size/8>{});
-}
-template<size_t bus_size, size_t...Is>
-constexpr auto split_bus_impl(bus_data<bus_size> const& data, 
-    std::index_sequence<Is...>) noexcept
-    -> std::pair<bus_data<bus_size/2>, bus_data<bus_size/2>> {
-    return {
-        {data[Is]...} ,
-        {data[sizeof...(Is) + Is]...}
-    };
-}
-template<size_t bus_size>
-constexpr auto split_bus(bus_data<bus_size> const& data) noexcept
-    -> std::pair<bus_data<bus_size/2>, bus_data<bus_size/2>>{
-    return split_bus_impl<bus_size>(data, std::make_index_sequence<bus_size/16>{});
-}
 constexpr std::byte uninitialized_byte{0xeb};
 namespace stdr = std::ranges;
 namespace stdv = std::views;

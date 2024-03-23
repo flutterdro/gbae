@@ -61,12 +61,12 @@ template<typename T, typename MemAccessor>
     using spec_type = std::decay_t<MemAccessor>::mem_spec;
     if constexpr (std::same_as<spec_type, sram_spec>) return std::nullopt;
     else {
-    if (address >= spec_type::bounds::upper_bound) return std::nullopt;
-    if constexpr (sizeof(T) >= std::to_underlying(spec_type::bus_size)) {
-        return (mem.template read<half_width_t<T>>(address) << 16) | mem.template read<half_width_t<T>>(address + 2);
-    } else {
-        return mem.template read<T>(address);
-    }
+        if (address >= spec_type::bounds::upper_bound) return std::nullopt;
+        if constexpr (sizeof(T) >= std::to_underlying(spec_type::bus_size)) {
+            return (mem.template read<half_width_t<T>>(address) << 4 * sizeof(T)) | mem.template read<half_width_t<T>>(address + 2);
+        } else {
+            return mem.template read<T>(address);
+        }
     }
 }
 class memory_managment_unit {
@@ -101,10 +101,11 @@ public:
     template<typename T>
     auto write(u32 address, T data)
         -> void {
+        detail::runtime_get(m_mem, 0, [](auto&& mem_region) {
+
+        });
     }
     auto load_bios(std::filesystem::path const& path) 
-        -> void;
-    auto load_bios(readonlymem_view<>)
         -> void;
     auto load_gamerom(std::filesystem::path const& path_to_cartridge)
         -> void;
