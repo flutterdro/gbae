@@ -1,9 +1,9 @@
 #ifndef IO_REGISTERS_MAP_HPP_DJINE_
 #define IO_REGISTERS_MAP_HPP_DJINE_
 
-#include "../ppu/registers.hpp"
-#include "ppu/ppu.hpp"
-#include "memoryprimitives.hpp"
+#include "emulator/ppu/registers.hpp"
+#include "emulator/ppu/ppu.hpp"
+#include "emulator/mmu/memoryprimitives.hpp"
 
 namespace fgba::mmu {
 

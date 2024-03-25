@@ -2,10 +2,10 @@
 #include <GLFW/glfw3.h>
 #include <spdlog/spdlog.h>
 
-#include "gui/frontend/devgui/maingui.hpp"
+#include "gui/devgui/maingui.hpp"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
-#include "scopeguard.hpp"
+#include "utility/scopeguard.hpp"
 #include "utility/fatexception.hpp"
 #include "emulator/gbaemu.hpp"
 
@@ -36,10 +36,9 @@ int main() try {
 
     while (not glfwWindowShouldClose(window.get())) {
         glfwWaitEvents();
-
         auto new_frame = fgba::gui::frame(window.get());
 
-        fgba::gui::draw_main_gui(gba);
+        fgba::gui::draw_main_gui(gba, display);
     }
 } catch (fgba::runtime_error const& e) {
     spdlog::error("{}", e);

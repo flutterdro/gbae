@@ -11,12 +11,13 @@
 #include <tuple>
 #include <type_traits>
 
-#include "../cpudefines.hpp"
-#include "../utility/fatexception.hpp"
+#include "emulator/cpudefines.hpp"
+#include "utility/fatexception.hpp"
 #include "fmt/format.h"
-#include "memoryprimitives.hpp"
-#include "io-registers-map.hpp"
-#include "ppu/ppu.hpp"
+#include "emulator/mmu/memoryprimitives.hpp"
+#include "emulator/mmu/io-registers-map.hpp"
+#include "emulator/ppu/ppu.hpp"
+#include "fgba-defines.hpp"
 
 namespace fgba::mmu {
 using bios_spec     = mem_spec<bounds<0x00000000, 0x00004000>, mem_type::rom, bus_size::word>;

@@ -1,9 +1,13 @@
-#include "maingui.hpp"
+#include "gui/devgui/maingui.hpp"
 #include "GLFW/glfw3.h"
+#include "gui/display.hpp"
 #include "imgui.h"
-#include "../fmt-imgui-glue.hpp"
+#include "gui/fmt-imgui-glue.hpp"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
+#include "spdlog/spdlog.h"
+#include <cstdint>
+#include <mutex>
 
 namespace fgba::gui {
 
@@ -91,7 +95,7 @@ frame::~frame() {
     glfwSwapBuffers(m_window);
 }
 
-auto draw_main_gui(gameboy_advance &gba) -> void {
+auto draw_main_gui(gameboy_advance &gba, display const& disp) -> void {
      #ifdef IMGUI_HAS_VIEWPORT
     ImGuiViewport* viewport = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(viewport->GetWorkPos());
@@ -153,6 +157,22 @@ auto draw_main_gui(gameboy_advance &gba) -> void {
         ImGui::BeginChild("");
         // ImGui::ShowDemoWindow();
         ImGui::EndChild();
+    }
+    ImGui::End();
+    draw_emu_display(disp);
+    ImGui::PopStyleVar();
+}
+
+auto draw_emu_display(display const& disp) -> void {
+    ImGuiWindowFlags const display_window_f =
+         ImGuiWindowFlags_NoResize
+        |ImGuiWindowFlags_NoCollapse
+        |ImGuiWindowFlags_NoNav
+        |ImGuiWindowFlags_NoScrollbar;
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{0.0f, 0.0f});
+    if (ImGui::Begin("Display", nullptr, display_window_f)) {
+        disp.update();
+        ImGui::Image(reinterpret_cast<void*>(disp.get_handle()), ImVec2{4 * 240.0, 4 * 160.0});
     }
     ImGui::End();
     ImGui::PopStyleVar();

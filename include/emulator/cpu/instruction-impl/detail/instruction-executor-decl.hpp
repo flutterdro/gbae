@@ -1,7 +1,8 @@
 #ifndef INSTRUCTION_EXECUTION_HPP_DECLARATION_KCNFKJCN
 #define INSTRUCTION_EXECUTION_HPP_DECLARATION_KCNFKJCN
-#include "../../arm7tdmi.hpp"
-#include "cpudefines.hpp"
+#include "emulator/cpu/arm7tdmi.hpp"
+#include "emulator/cpudefines.hpp"
+
 namespace fgba::cpu {
 #define DECLARE_ARM_DATA_PROCESSING_VARIATIONS(name)\
     DECLARE_ARM_DATA_PROCESSING_GROUP(name, DECLARE_ARM_DATA_PROCESSING_OPERATION)\

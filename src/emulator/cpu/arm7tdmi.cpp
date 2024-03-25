@@ -1,9 +1,7 @@
-#include "arm7tdmi.hpp"
-#include "cpudefines.hpp"
-#include "shifter.hpp"
-#include "lla.hpp"
-#include "instruction-implementation/implementation.hpp"
-#include "opcodes.hpp"
+#include "emulator/cpu/arm7tdmi.hpp"
+#include "emulator/cpudefines.hpp"
+#include "emulator/cpu/instruction-impl/implementation.hpp"
+#include "emulator/cpu/opcodes.hpp"
 #include <__concepts/invocable.h>
 #include <__utility/to_underlying.h>
 #include <array>

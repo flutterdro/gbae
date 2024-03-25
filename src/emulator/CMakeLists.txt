@@ -1,15 +1,5 @@
 target_sources(emulator 
     PRIVATE
-        FILE_SET headers TYPE HEADERS FILES
-            cpudefines.hpp
-            gbaemu.hpp
-            cpu/arm7tdmi.hpp
-            cpu/bus.hpp
-            cpu/disassembler/disassembler.hpp
-            mmu/mmu.hpp
-            mmu/memoryprimitives.hpp
-            cpu/registermanager.hpp
-    PRIVATE
         mmu/mmu.cpp
         cpu/arm7tdmi.cpp
         cpu/bus.cpp

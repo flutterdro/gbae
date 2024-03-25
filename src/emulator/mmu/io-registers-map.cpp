@@ -14,13 +14,13 @@ CASE_BYTE_READ_WITH_OFFSET(register, 3)
 case register##_addr + offset: {return m_ppu.m_##register.read<u8, offset>(); break;}
 
 namespace fgba::mmu {
-// template<>
-// auto io_registers_map::read<u8>(u32 address) -> u8{
-//     switch (address) {
-//     using namespace ppu;
-//         CASE_BYTE_READ_FOR_H(dispcnt)
-//         CASE_BYTE_READ_FOR_H(dispstat)
-//         CASE_BYTE_READ_FOR_H(vcount)
-//     }
-// }
+template<>
+auto io_registers_map::read<u8>(u32 address) const -> u8{
+    switch (address) {
+    using namespace ppu;
+        CASE_BYTE_READ_FOR_H(dispcnt)
+        CASE_BYTE_READ_FOR_H(dispstat)
+        CASE_BYTE_READ_FOR_H(vcount)
+    }
+}
 }

@@ -1,4 +1,4 @@
-#include "detail/insctruction-executor-impl.hpp"
+#include "emulator/cpu/instruction-impl/detail/insctruction-executor-impl.hpp"
 
 namespace fgba::cpu {
 

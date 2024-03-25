@@ -4,10 +4,11 @@
 
 #include <bit>
 
-#include "cpu/arm7tdmi.hpp"
-#include "cpudefines.hpp"
-#include "mmu/mmu.hpp"
-#include "ppu/ppu.hpp"
+#include "emulator/cpu/arm7tdmi.hpp"
+#include "emulator/cpudefines.hpp"
+#include "emulator/mmu/mmu.hpp"
+#include "emulator/ppu/ppu.hpp"
+#include <filesystem>
 
 namespace fgba {
 class gameboy_advance {

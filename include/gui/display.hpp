@@ -2,7 +2,7 @@
 #define DISPLAY_HPP_SWNKAJQLJQNDKC
 
 #include <mdspan>
-#include "cpudefines.hpp"
+#include "emulator/cpudefines.hpp"
 #include "glad/gl.h"
 
 namespace fgba::gui {
@@ -18,9 +18,9 @@ public:
         -> display&;
     ~display();
 
-    auto update() noexcept 
+    auto update() const noexcept 
         -> void;
-    [[nodiscard]]auto get_handle() noexcept 
+    [[nodiscard]]auto get_handle() const noexcept 
         -> GLuint;
 private:
     lcd_display_view m_view;

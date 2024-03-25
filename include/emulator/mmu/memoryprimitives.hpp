@@ -1,10 +1,10 @@
 #ifndef MEMORY_PRIMITIVES_HPP_
 #define MEMORY_PRIMITIVES_HPP_
-#include "cpudefines.hpp"
+#include "emulator/cpudefines.hpp"
 #include "spdlog/spdlog.h"
 #include <__algorithm/ranges_fill.h>
 #include <__concepts/invocable.h>
-#include "fatexception.hpp"
+#include "utility/fatexception.hpp"
 #include <__ranges/access.h>
 #include <__ranges/concepts.h>
 #include <__utility/to_underlying.h>

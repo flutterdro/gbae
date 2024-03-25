@@ -85,3 +85,4 @@ _deps
 .DS_Store
 .cache
 reference
+.clangd

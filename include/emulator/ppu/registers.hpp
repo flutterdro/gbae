@@ -1,7 +1,7 @@
 #ifndef IO_REGISTERS_HPP_IEKFJNCJEF_
 #define IO_REGISTERS_HPP_IEKFJNCJEF_
 
-#include "cpudefines.hpp"
+#include "emulator/cpudefines.hpp"
 namespace fgba::ppu {
 template<typename T>
 struct enable_read_operations {

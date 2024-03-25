@@ -4,7 +4,7 @@
 #include <concepts>
 #include <functional>
 
-#include "../defines.hpp"
+#include "fgba-defines.hpp"
 namespace fgba::cpu {
 
 class bus {

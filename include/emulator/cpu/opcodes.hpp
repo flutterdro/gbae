@@ -1,7 +1,7 @@
 #ifndef OP_CODES_HPP_
 #define OP_CODES_HPP_
 
-#include "cpudefines.hpp"
+#include "emulator/cpudefines.hpp"
 
 namespace fgba::cpu {
 struct arm_instruction {

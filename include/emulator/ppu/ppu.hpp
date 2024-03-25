@@ -7,10 +7,10 @@
 #include <mdspan>
 #include <sys/_types/_uintptr_t.h>
 
-#include "cpudefines.hpp"
-#include "registers.hpp"
+#include "emulator/cpudefines.hpp"
+#include "emulator/ppu/registers.hpp"
 #include "spdlog/spdlog.h"
-#include "mmu/memoryprimitives.hpp"
+#include "emulator/mmu/memoryprimitives.hpp"
 namespace fgba::mmu {
 class io_registers_map;
 }
@@ -21,7 +21,7 @@ using oam_spec      = mem_spec<bounds<0x07000000, 0x07000400>, mem_type::ram, bu
 class ppu {
     friend class mmu::io_registers_map;
 public:
-    ppu() = default;
+    ppu();
     [[nodiscard]]auto get_display_view() const noexcept
         -> lcd_display_view;
     auto get_vram()

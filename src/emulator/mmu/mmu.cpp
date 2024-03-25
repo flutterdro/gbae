@@ -1,7 +1,7 @@
-#include "mmu.hpp"
-#include "cpudefines.hpp"
-#include "fatexception.hpp"
-#include "mmu/memoryprimitives.hpp"
+#include "emulator/mmu/mmu.hpp"
+#include "emulator/cpudefines.hpp"
+#include "utility/fatexception.hpp"
+#include "emulator/mmu/memoryprimitives.hpp"
 
 #include <array>
 #include <cstddef>

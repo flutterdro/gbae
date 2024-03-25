@@ -1,7 +1,8 @@
-#include "ppu.hpp"
-#include "cpudefines.hpp"
+#include "emulator/ppu/ppu.hpp"
+#include "emulator/cpudefines.hpp"
 #include <__ranges/transform_view.h>
 #include <bit>
+#include <cstddef>
 #include <cstring>
 #include <span>
 
@@ -26,6 +27,20 @@ static_assert(alignof(color) == 1);
 } // anonymous namesapace
 
 namespace ppu {
+ppu::ppu() {
+    auto vram_view = std::span{m_vram};
+    size_t counter = 0;
+    unsigned color_offset = 0;
+    for (size_t i = 0; i < 160; ++i) {
+        for (size_t j = 0; j < 240; ++j) {
+            m_display[i*240*3 + j*3 +0] = static_cast<std::byte>(color_offset);
+            m_display[i*240*3 + j*3 +1] = static_cast<std::byte>(color_offset);
+            m_display[i*240*3 + j*3 +2] = static_cast<std::byte>(color_offset);
+        }
+        color_offset += 1;
+    }
+}
+
 auto ppu::get_display_view() const noexcept
     -> lcd_display_view {
     return lcd_display_view{m_display.data()};

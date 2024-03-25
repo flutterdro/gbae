@@ -1,6 +1,6 @@
-#include "gbaemu.hpp"
-#include "../utility/fatexception.hpp"
-#include "mmu/mmu.hpp"
+#include "emulator/gbaemu.hpp"
+#include "utility/fatexception.hpp"
+#include "emulator/mmu/mmu.hpp"
 #include <source_location>
 namespace fgba {
 static std::vector<std::byte> dummy;

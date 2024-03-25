@@ -3,7 +3,7 @@
 //low level arithmethic implementation 
 //it relies on a lot of intrinsics
 
-#include "cpudefines.hpp"
+#include "emulator/cpudefines.hpp"
 namespace fgba::cpu {
 inline auto add_impl(u32 operand1, u32 operand2, u32* res, u32) noexcept
     -> bool {

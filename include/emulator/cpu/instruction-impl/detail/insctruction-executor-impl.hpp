@@ -1,9 +1,9 @@
 #ifndef INSTRUCTION_EXECUTION_IMPLEMENTATION_HPP_CJNFJCFNK
 #define INSTRUCTION_EXECUTION_IMPLEMENTATION_HPP_CJNFJCFNK
-#include "instruction-executor-decl.hpp"
-
-#include "../../lla.hpp"
-#include "../../shifter.hpp"
+#include "emulator/cpu/instruction-impl/detail/instruction-executor-decl.hpp"
+#include "fgba-defines.hpp"
+#include "emulator/cpu/lla.hpp"
+#include "emulator/cpu/shifter.hpp"
 
 namespace fgba::cpu {
 

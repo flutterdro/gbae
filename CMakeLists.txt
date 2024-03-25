@@ -55,6 +55,7 @@ target_compile_definitions(emulator
         _LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_DEBUG
     >
 )
+target_include_directories(emulator PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_compile_options(emulator
     PUBLIC "$<$<CONFIG:Debug>:${FGBA_SAFETY_FLAGS}>"
     PRIVATE "$<$<CONFIG:Debug>:${FGBA_WARNING_FLAGS}>"

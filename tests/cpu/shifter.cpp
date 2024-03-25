@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <ostream>
-#include "../../src/emulator/cpudefines.hpp"
-#include "../../src/emulator/cpu/shifter.hpp"
+#include "emulator/cpudefines.hpp"
+#include "emulator/cpu/shifter.hpp"
 
 std::ostream& operator<<(std::ostream& stream, fgba::cpu::shifter::shift_res val) {
     stream << '{' << val.shifted_data << ',' << val.carryout << '}';

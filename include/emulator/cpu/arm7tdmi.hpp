@@ -1,8 +1,8 @@
 #ifndef FGBA_ARMCPU_HPP
 #define FGBA_ARMCPU_HPP
 
-#include "bus.hpp"
-#include "registermanager.hpp"
+#include "emulator/cpu/bus.hpp"
+#include "emulator/cpu/registermanager.hpp"
 #include <queue>
 
 namespace fgba::cpu {

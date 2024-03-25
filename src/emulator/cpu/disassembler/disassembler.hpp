@@ -5,7 +5,7 @@
 #include <vector>
 #include <string>
 
-#include "cpudefines.hpp"
+#include "emulator/cpudefines.hpp"
 
 
 namespace fgba {

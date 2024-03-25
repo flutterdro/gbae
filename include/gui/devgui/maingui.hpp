@@ -1,10 +1,10 @@
 #ifndef MAIN_GUI_HPP_DNJCEIJNA
 #define MAIN_GUI_HPP_DNJCEIJNA
 
-#include "../../../emulator/gbaemu.hpp"
-#include "frontend/display.hpp"
+#include "emulator/gbaemu.hpp"
+#include "gui/display.hpp"
 #include "GLFW/glfw3.h"
-#include "cpu/registermanager.hpp"
+#include "emulator/cpu/registermanager.hpp"
 #include <expected>
 
 namespace fgba::gui {
@@ -22,7 +22,7 @@ private:
 auto setup_opengl_context() -> std::expected<window_ptr, std::string>; 
 auto setup_imgui(GLFWwindow* ctx) -> void;
 
-auto draw_main_gui(gameboy_advance& gba) -> void;
+auto draw_main_gui(gameboy_advance& gba, display const& disp) -> void;
 auto draw_cpu_registers_dump(cpu::register_manager const& rm) -> void;
 auto draw_emu_display(display const&) -> void;
 }
