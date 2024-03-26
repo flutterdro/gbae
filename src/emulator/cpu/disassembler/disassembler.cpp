@@ -2,7 +2,7 @@
 #include <fmt/core.h>
 
 #include <algorithm>
-
+//NOLINTBEGIN
 namespace rngs = std::ranges;
 namespace fgba {
 [[nodiscard]] auto create_arm_instruction(std::span<std::byte const> instruction_bytes) noexcept
@@ -785,3 +785,4 @@ auto arm_instruction_to_string(u32 instruction)
     return ret; 
 }
 }
+//NOLINTEND

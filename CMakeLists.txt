@@ -83,5 +83,16 @@ target_link_libraries(emulator
         glad
 )
 
+find_program(CLANG_TIDY_EXE NAMES "clang-tidy" REQUIRED)
+set(CLANG_TIDY_ARGS "--config-file=${CMAKE_CURRENT_SOURCE_DIR}/.clang-tidy")
+set(CLANG_TIDY_COMMAND "clang-tidy" "${CLANG_TIDY_ARGS}")
+
+find_program(CPPCHECK_EXE NAMES "cppcheck" REQUIRED)
+set(CPPCHECK_ARGS "--inline-suppr")
+set(CPPCHECK_COMMAND "cppcheck" "${CPPCHECK_ARGS}")
+
+set_target_properties(emulator PROPERTIES CXX_CLANG_TIDY "${CLANG_TIDY_COMMAND}")
+set_target_properties(emulator PROPERTIES CXX_CPPCHECK "${CPPCHECK_COMMAND}")
+
 
 enable_testing()

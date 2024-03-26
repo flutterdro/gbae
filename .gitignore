@@ -86,3 +86,5 @@ _deps
 .cache
 reference
 .clangd
+.vscode
+.clangd

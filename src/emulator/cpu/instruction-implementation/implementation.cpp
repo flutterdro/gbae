@@ -1,5 +1,7 @@
 #include "emulator/cpu/instruction-impl/detail/insctruction-executor-impl.hpp"
 
+//You know shits about to get down when you see this
+//NOLINTBEGIN
 namespace fgba::cpu {
 
 namespace  {
@@ -71,3 +73,4 @@ auto execute_arm(arm7tdmi& cpu, arm_instruction_set instruction, u32 opcode) -> 
 }
 
 }
+//NOLINTEND

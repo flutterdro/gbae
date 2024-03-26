@@ -9,8 +9,7 @@
 #include "utility/fatexception.hpp"
 #include "emulator/gbaemu.hpp"
 
-int main() try {
-
+auto main() -> int try {
     auto window = fgba::gui::window_ptr{nullptr};
     {
     auto window_exp = fgba::gui::setup_opengl_context();
@@ -34,7 +33,7 @@ int main() try {
     auto display = fgba::gui::display{gba.get_display_view()};
 
 
-    while (not glfwWindowShouldClose(window.get())) {
+    while (glfwWindowShouldClose(window.get()) == 0) {
         glfwWaitEvents();
         auto new_frame = fgba::gui::frame(window.get());
 
