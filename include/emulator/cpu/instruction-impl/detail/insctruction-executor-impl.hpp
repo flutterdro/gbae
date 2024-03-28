@@ -16,7 +16,7 @@ namespace  {
 [[nodiscard]]constexpr auto notwastaken(u32 operand1) { return ~operand1; }
 [[nodiscard]]constexpr auto identity(u32 operand1) { return operand1; }
 [[nodiscard]]constexpr auto check_overflow(u32 operand1, u32 operand2, u32 result) {
-    return ((operand1 >> 31) == (operand2 >> 31)) && ((operand1 >> 31) != (result >> 31));
+    return ((operand1 >> 31l) == (operand2 >> 31u)) && ((operand1 >> 31u) != (result >> 31u));
 }
 
 }

@@ -4,6 +4,8 @@
 #include "emulator/cpudefines.hpp"
 
 namespace fgba::cpu {
+//NOLINTBEGIN(cppcoreguidelines-macro-usage)
+//disable this check since I couldn't come up with better code generation other than macros
 #define DECLARE_ARM_DATA_PROCESSING_VARIATIONS(name)\
     DECLARE_ARM_DATA_PROCESSING_GROUP(name, DECLARE_ARM_DATA_PROCESSING_OPERATION)\
     DECLARE_ARM_DATA_PROCESSING_OPERATION(name##i)
@@ -28,7 +30,7 @@ namespace fgba::cpu {
     static auto arm_##name(arm7tdmi&, u32) -> void;
 #define DECLARE_ARM_DATA_PROCESSING_OPERATION_NO_S(name) \
     static auto arm_##name(arm7tdmi&, u32) -> void;
-
+//NOLINTEND(cppcoreguidelines-macro-usage)
 struct instruction_executor {
     static auto arm_bx(arm7tdmi& cpu, u32 instruction) 
         -> void; 
@@ -54,6 +56,6 @@ struct instruction_executor {
 #undef DECLARE_ARM_DATA_PROCESSING_GROUP
 #undef DECLARE_ARM_DATA_PROCESSING_OPERATION
 #undef DECLARE_ARM_DATA_PROCESSING_OPERATION_NO_S
-}
+} //namespace fgba::cpu
 
 #endif

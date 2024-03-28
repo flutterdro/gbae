@@ -13,7 +13,7 @@ inline auto add_impl(u32 operand1, u32 operand2, u32* res, u32) noexcept
 }
 inline auto adc_impl(u32 operand1, u32 operand2, u32* res, u32 carryin) noexcept
     -> bool {
-    u32 carryout;
+    u32 carryout; // NOLINT
 #if __has_builtin(__builtin_add_overflow)
     *res = __builtin_addc(operand1, operand2, carryin, &carryout);
     return carryout;

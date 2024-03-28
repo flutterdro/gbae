@@ -4,6 +4,6 @@
 
 namespace fgba::cpu {
 auto execute_arm(arm7tdmi&, arm_instruction_set, u32) -> void;
-}
+} // namespace fgba::cpu
 
 #endif

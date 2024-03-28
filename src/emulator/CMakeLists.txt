@@ -1,4 +1,4 @@
-target_sources(emulator 
+target_sources(fgba_exe 
     PRIVATE
         mmu/mmu.cpp
         cpu/arm7tdmi.cpp

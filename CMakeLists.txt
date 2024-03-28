@@ -1,79 +1,49 @@
 cmake_minimum_required(VERSION 3.28)
-project(gbae VERSION 0.1.0.0)
+project(fgba VERSION 0.1.0.0)
+enable_testing()
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-# set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
-if(CMAKE_CONFIGURATION_TYPES) 
-    if(NOT "Profile" IN_LIST CMAKE_CONFIGURATION_TYPES)
-        list(APPEND CMAKE_CONFIGURATION_TYPES Profile)
-    endif()
+option(FGBA_DEV_MODE "enable if you are developer" OFF)
+option(FGBA_ENABLE_IPO "enables IPO/LTO for release builds" ON)
+option(FGBA_BUILD_TESTS "build tests" ON)
+
+include(CheckIPOSupported)
+check_ipo_supported(RESULT result OUTPUT output)
+if(result AND FGBA_ENABLE_IPO)
+    set_property(
+        GLOBAL PROPERTY 
+            INTERPROCEDURAL_OPTIMIZATION 
+                $<IF:$<CONFIG:RelWithDebInfo,Release>,ON,OFF>
+    )
 else()
-    set(allowableBuildTypes Debug Release RelWithDebInfo Profile)
-    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY
-                 STRINGS "${allowableBuildTypes}")   
-    if(NOT CMAKE_BUILD_TYPE)
-        set(CMAKE_BUILD_TYPE Debug CACHE STRING "" FORCE)
-    elseif(NOT CMAKE_BUILD_TYPE IN_LIST allowableBuildTypes)
-        message(FATAL_ERROR "Invalid build type: ${CMAKE_BUILD_TYPE}")
-    endif()
+    message(FATAL_ERROR "IPO/LTO requested but there is no support for one: ${output}")
 endif()
 
-set(FGBA_WARNING_FLAGS 
-    -Wall
-    -Wextra
-    -Wshadow
-    -Wmove
-    -Wnon-virtual-dtor
-    -Wold-style-cast
-    -Wcast-align
-    -Wunused
-    -Woverloaded-virtual
-    -Wpedantic
-    -Wconversion
-    -Wsign-conversion
-    -Wnull-dereference
-    -Wdouble-promotion
-)
-set(FGBA_SAFETY_FLAGS 
-    -fsanitize=address 
-    -fsanitize=undefined 
-    -fstack-protector-strong 
-)
 
-add_executable(emulator)
+
+add_executable(fgba_exe)
+set_target_properties(fgba_exe PROPERTIES OUTPUT_NAME fgba)
+
 add_subdirectory(deps)
-add_subdirectory(tests)
 
-add_subdirectory(src/utility)
 add_subdirectory(src)
 
-target_compile_definitions(emulator
+target_compile_definitions(fgba_exe
     PUBLIC
     $<$<CONFIG:Debug>:
         _LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_DEBUG
     >
 )
-target_include_directories(emulator PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_compile_options(emulator
-    PUBLIC "$<$<CONFIG:Debug>:${FGBA_SAFETY_FLAGS}>"
-    PRIVATE "$<$<CONFIG:Debug>:${FGBA_WARNING_FLAGS}>"
-    PUBLIC $<$<CONFIG:Release>: -flto>
+
+target_include_directories(fgba_exe PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_compile_options(fgba_exe
     PUBLIC -fexperimental-library
 )
-target_link_options(emulator 
-    PUBLIC 
-    $<$<CONFIG:Debug>:
-        -fsanitize=address 
-        -fsanitize=undefined
-    >
-    PUBLIC $<$<CONFIG:Release>:
-        -flto
-    >
-)
 
-target_link_libraries(emulator 
+target_link_libraries(fgba_exe 
     PRIVATE 
         fmt
         spdlog
@@ -82,17 +52,32 @@ target_link_libraries(emulator
         imgui
         glad
 )
+add_subdirectory(tests)
 
-find_program(CLANG_TIDY_EXE NAMES "clang-tidy" REQUIRED)
-set(CLANG_TIDY_ARGS "--config-file=${CMAKE_CURRENT_SOURCE_DIR}/.clang-tidy")
-set(CLANG_TIDY_COMMAND "clang-tidy" "${CLANG_TIDY_ARGS}")
+#------for developers------
 
-find_program(CPPCHECK_EXE NAMES "cppcheck" REQUIRED)
-set(CPPCHECK_ARGS "--inline-suppr")
-set(CPPCHECK_COMMAND "cppcheck" "${CPPCHECK_ARGS}")
+if(NOT FGBA_DEV_MODE)
+    return()
+endif()
 
-set_target_properties(emulator PROPERTIES CXX_CLANG_TIDY "${CLANG_TIDY_COMMAND}")
-set_target_properties(emulator PROPERTIES CXX_CPPCHECK "${CPPCHECK_COMMAND}")
+include(cmake/compiler-warnings.cmake)
+include(cmake/sanitizers.cmake)
+include(cmake/static-analyzis.cmake)
+
+option(FGBA_SANITIZE_ADDRESS "dev: enable address sanitizer" ON)
+option(FGBA_SANITIZE_LEAK "dev: enable leak sanitizer" OFF)
+option(FGBA_SANITIZE_UB "dev: enable undefined behaviour sanitizer" ON)
+option(FGBA_SANITIZE_THREAD "dev: enable thread sanitizer" OFF)
+option(FGBA_SANITIZE_MEMORY "dev: enable memory sanitizer" OFF)
+
+enable_sanitizers_globaly(
+    FGBA_SANITIZE_ADDRESS
+    FGBA_SANITIZE_LEAK
+    FGBA_SANITIZE_UB
+    FGBA_SANITIZE_THREAD
+    FGBA_SANITIZE_MEMORY
+)
 
 
-enable_testing()
+target_enable_static_analysis(fgba_exe)
+target_add_warnings(fgba_exe "" "" "" "")

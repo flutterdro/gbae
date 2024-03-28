@@ -57,7 +57,7 @@ auto setup_opengl_context() -> std::expected<window_ptr, std::string> {
     if (not ret) { return std::unexpected{"failed to create a window"}; }
 
     glfwMakeContextCurrent(ret.get());
-    int version = gladLoadGL(glfwGetProcAddress);
+    int const version = gladLoadGL(glfwGetProcAddress);
     if (version == 0) { return std::unexpected{"failed to initialize opengl context"}; }
 
     spdlog::info("loaded opengl {}.{}", GLAD_VERSION_MAJOR(version), GLAD_VERSION_MINOR(version));
@@ -76,7 +76,7 @@ auto setup_imgui(GLFWwindow* ctx) -> void {
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls 
 
-    ImGui_ImplGlfw_InitForOpenGL(ctx, true);          // Second param install_callback=true will install GLFW callbacks and chain to existing ones.
+    ImGui_ImplGlfw_InitForOpenGL(ctx, /*install_callbacks=*/true);          // Second param install_callback=true will install GLFW callbacks and chain to existing ones.
     ImGui_ImplOpenGL3_Init();
     [[maybe_unused]]ImFont* font = io.Fonts->AddFontFromFileTTF("../asset/fonts/ComicShannsMono/ComicShannsMonoNerdFontMono-Regular.otf", 14.0);
 }
@@ -106,7 +106,7 @@ auto draw_main_gui(gameboy_advance &gba, display const& disp) -> void {
     ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
     #endif
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-    static bool smth = 0;
+    static bool smth = false;
     ImGuiWindowFlags const godwindowflags =
          ImGuiWindowFlags_NoDecoration 
         |ImGuiWindowFlags_NoResize 
@@ -115,8 +115,7 @@ auto draw_main_gui(gameboy_advance &gba, display const& disp) -> void {
         |ImGuiWindowFlags_NoScrollWithMouse;
     if (ImGui::Begin("ayoo?", &smth, godwindowflags)){
         ImGui::BeginMenuBar();
-        static bool display_cpu_data = 0;
-        static bool exit = 0;
+        static bool display_cpu_data = false;
         if (ImGui::BeginMenu("File")) {
             ImGui::MenuItem("Open", nullptr, &display_cpu_data);
             if (ImGui::BeginMenu("Open Recent")) {
@@ -172,7 +171,7 @@ auto draw_emu_display(display const& disp) -> void {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{0.0f, 0.0f});
     if (ImGui::Begin("Display", nullptr, display_window_f)) {
         disp.update();
-        ImGui::Image(reinterpret_cast<void*>(disp.get_handle()), ImVec2{4 * 240.0, 4 * 160.0});
+        ImGui::Image(reinterpret_cast<void*>(disp.get_handle()), ImVec2{240.0, 160.0}); //NOLINT
     }
     ImGui::End();
     ImGui::PopStyleVar();
@@ -180,14 +179,14 @@ auto draw_emu_display(display const& disp) -> void {
 
 void draw_psr(cpu::psr psr) {
     ImGui::BeginGroup();
-    ImGuiTableFlags table_flags = 
+    ImGuiTableFlags const table_flags = 
         ImGuiTableFlags_PreciseWidths
         |ImGuiTableFlags_NoHostExtendX
         |ImGuiTableFlags_Borders;
     ImGui::PushStyleColor(ImGuiCol_TableBorderStrong, ImVec4{0.7f, 0.7f, 0.7f, 1.0f});
     ImGui::PushStyleColor(ImGuiCol_TableBorderLight, ImVec4{0.7f, 0.7f, 0.7f, 1.0f});
     if (ImGui::BeginTable("##condition code flags", 12, table_flags)) {
-        ImGuiTableColumnFlags column_flags = ImGuiTableColumnFlags_WidthFixed;
+        ImGuiTableColumnFlags const column_flags = ImGuiTableColumnFlags_WidthFixed;
         auto text_width = 0.0f;
         ImGui::TableSetupColumn("N", column_flags, text_width);
         ImGui::TableSetupColumn("Z", column_flags, text_width);
@@ -234,7 +233,7 @@ void draw_psr(cpu::psr psr) {
 }
 
 auto draw_cpu_registers_dump(const cpu::register_manager &rm) -> void {
-    ImGuiWindowFlags wflags = 
+    ImGuiWindowFlags const wflags = 
         ImGuiWindowFlags_NoScrollbar
         |ImGuiWindowFlags_NoScrollWithMouse
         |ImGuiWindowFlags_NoCollapse
@@ -248,7 +247,7 @@ auto draw_cpu_registers_dump(const cpu::register_manager &rm) -> void {
         "hex"
     };
     static int selected = 3;
-    ImGuiTableFlags table_flags = 
+    ImGuiTableFlags const table_flags = 
         ImGuiTableFlags_PreciseWidths
         |ImGuiTableFlags_NoHostExtendX
         |ImGuiTableFlags_Borders

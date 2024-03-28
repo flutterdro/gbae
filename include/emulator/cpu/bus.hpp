@@ -41,6 +41,6 @@ private:
     std::function<u32(signals)> m_read_callback;
     std::function<void(u32, signals)> m_write_callback;
 };
-}
+} // namespace fgab::cpu
 
 #endif

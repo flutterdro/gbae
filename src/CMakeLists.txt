@@ -1,7 +1,7 @@
 add_subdirectory(emulator)
 add_subdirectory(gui)
 
-target_sources(emulator
+target_sources(fgba_exe
     PRIVATE
         main.cpp
 )
