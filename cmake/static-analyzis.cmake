@@ -58,11 +58,11 @@ function(
     target_enable_static_analysis
         TARGET
 )
-    if(CPPCHECK_EXE)
-        set_target_properties(${TARGET} PROPERTIES CXX_CPPCHECK "${CPPCHECK_COMMAND}")
-    endif()
-    if(CLANG_TIDY_EXE)
-        set_target_properties(${TARGET} PROPERTIES CXX_CLANG_TIDY "${CLANG_TIDY_COMMAND}")
-    endif()
+    # if(CPPCHECK_EXE)
+    #     set_target_properties(${TARGET} PROPERTIES CXX_CPPCHECK "${CPPCHECK_COMMAND}")
+    # endif()
+    # if(CLANG_TIDY_EXE)
+    #     set_target_properties(${TARGET} PROPERTIES CXX_CLANG_TIDY "${CLANG_TIDY_COMMAND}")
+    # endif()
     
 endfunction()

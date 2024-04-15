@@ -10,6 +10,7 @@
 #include "emulator/gbaemu.hpp"
 
 auto main() -> int try {
+     
     auto window = fgba::gui::window_ptr{nullptr};
     {
     auto window_exp = fgba::gui::setup_opengl_context();

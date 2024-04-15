@@ -15,10 +15,12 @@
 #include <cstring>
 #include <memory>
 #include <utility>
+#include <ranges>
 #include <mdspan>
 
+namespace stdr = std::ranges;
+namespace stdv = std::views;
 template<size_t LowerBound, size_t UpperBound>
-
 struct bounds {
     static_assert(LowerBound < UpperBound);
     static constexpr size_t lower_bound = LowerBound; 

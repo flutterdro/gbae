@@ -1,75 +1,134 @@
-#include "emulator/cpu/instruction-impl/detail/insctruction-executor-impl.hpp"
-
+#include "emulator/cpu/arm7tdmi.hpp"
+#include "emulator/cpu/instruction-impl/detail/instruction-executor.hpp"
+#include "emulator/cpu/lla.hpp"
+#include "emulator/cpu/opcodes.hpp"
+#include "emulator/cpudefines.hpp"
+#include <array>
+#include "emulator/cpu/instruction-impl/implementation.hpp"
 //You know shits about to get down when you see this
 //NOLINTBEGIN
 namespace fgba::cpu {
 
 namespace  {
-#define GEN_ASIGN_IMPL_PTR_SHIFT_AND_S_VARIATION(name)\
-    do {\
-        GEN_ASIGN_IMPL_PTR_SHIFT_VARIATION_2(name, GEN_ASIGN_IMPL_PTR);\
-        GEN_ASIGN_IMPL_PTR(name##i);\
-    }while (false)
-#define GEN_ASIGN_IMPL_PTR_SHIFT_VARIATION(name)\
-    do {\
-        GEN_ASIGN_IMPL_PTR_SHIFT_VARIATION_2(name, GEN_ASIGN_IMPL_PTR_NO_S);\
-        GEN_ASIGN_IMPL_PTR_NO_S(name##i);\
-    }while (false)
-#define GEN_ASIGN_IMPL_PTR_SHIFT_VARIATION_2(name, macro)\
-    do {\
-        macro(name);\
-        macro(name##lsr32);\
-        macro(name##asr32);\
-        macro(name##rrx);\
-        macro(name##lsl);\
-        macro(name##lsr);\
-        macro(name##asr);\
-        macro(name##ror);\
-        macro(name##rslsl);\
-        macro(name##rslsr);\
-        macro(name##rsasr);\
-        macro(name##rsror);\
-    } while(false)
-#define GEN_ASIGN_IMPL_PTR(name)\
-    do {\
-        ret[arm_instruction_set::name] = &instruction_executor::arm_##name<false>;\
-        ret[arm_instruction_set::name##s] = &instruction_executor::arm_##name<true>;\
-    } while(false)
-#define GEN_ASIGN_IMPL_PTR_NO_S(name)\
-    do {\
-        ret[arm_instruction_set::name] = &instruction_executor::arm_##name;\
-    } while(false) 
+
+[[nodiscard]]constexpr auto bic_impl(u32 operand1, u32 operand2) noexcept { return operand1 & (~operand2); }
+[[nodiscard]]constexpr auto and_impl(u32 operand1, u32 operand2) noexcept { return operand1 & operand2; }
+[[nodiscard]]constexpr auto eor_impl(u32 operand1, u32 operand2) noexcept { return operand1 ^ operand2; }
+[[nodiscard]]constexpr auto orr_impl(u32 operand1, u32 operand2) noexcept { return operand1 | operand2; }
+[[nodiscard]]constexpr auto mvn_impl(u32 operand1)               noexcept { return ~operand1; }
+[[nodiscard]]constexpr auto mov_impl(u32 operand1)               noexcept { return operand1; }
+
 
 using impl_ptr = auto (*)(arm7tdmi&, u32) -> void;
-constexpr auto init_arm_impl_ptrs() {
-    std::array<impl_ptr, arm_instruction_set::undefined> ret{};
-    GEN_ASIGN_IMPL_PTR_SHIFT_AND_S_VARIATION(and_);
-    GEN_ASIGN_IMPL_PTR_SHIFT_AND_S_VARIATION(orr);
-    GEN_ASIGN_IMPL_PTR_SHIFT_AND_S_VARIATION(eor);
-    GEN_ASIGN_IMPL_PTR_SHIFT_AND_S_VARIATION(bic);
-    GEN_ASIGN_IMPL_PTR_SHIFT_AND_S_VARIATION(mov);
-    GEN_ASIGN_IMPL_PTR_SHIFT_AND_S_VARIATION(mvn);
-    GEN_ASIGN_IMPL_PTR_SHIFT_VARIATION(tst);
-    GEN_ASIGN_IMPL_PTR_SHIFT_VARIATION(teq);
-    GEN_ASIGN_IMPL_PTR_SHIFT_AND_S_VARIATION(add);
-    GEN_ASIGN_IMPL_PTR_SHIFT_AND_S_VARIATION(adc);
-    GEN_ASIGN_IMPL_PTR_SHIFT_AND_S_VARIATION(sub);
-    GEN_ASIGN_IMPL_PTR_SHIFT_AND_S_VARIATION(sbc);
-    GEN_ASIGN_IMPL_PTR_SHIFT_AND_S_VARIATION(rsb);
-    GEN_ASIGN_IMPL_PTR_SHIFT_AND_S_VARIATION(rsc);
-    GEN_ASIGN_IMPL_PTR_SHIFT_VARIATION(cmp);
-    GEN_ASIGN_IMPL_PTR_SHIFT_VARIATION(cmn);
+using impl_array = std::array<impl_ptr, arm_instruction::count()>;
+
+enum class ignore_dest {
+    off = 0,
+    on  = 1,
+};
+
+template<arithmetic_operation Op, immediate_operand O, ignore_dest Id, s_bit S, shifts Shift>
+auto arm_overload(arm7tdmi& cpu, u32 instr) -> void { 
+    if constexpr (Id == ignore_dest::off) {
+        instruction_executor::arm_arithmetic<O, S, Shift, Op>(cpu, instr);
+    } else {
+        instruction_executor::arm_arithmetic<O, Shift, Op>(cpu, instr);
+    }
+}
+template<logical_operation Op, immediate_operand O, ignore_dest Id, s_bit S, shifts Shift>
+auto arm_overload(arm7tdmi& cpu, u32 instr) -> void { 
+    if constexpr (Id == ignore_dest::off) {
+        instruction_executor::arm_logical<O, S, Shift, Op>(cpu, instr);
+    } else {
+        instruction_executor::arm_logical<O, Shift, Op>(cpu, instr);
+    }
+}
+template<single_operand_operation Op, immediate_operand O, ignore_dest Id, s_bit S, shifts Shift>
+auto arm_overload(arm7tdmi& cpu, u32 instr) -> void { 
+    instruction_executor::arm_single_operand<O, S, Shift, Op>(cpu, instr);
+}
+
+template<auto Operation, arm_instruction::set Instr, ignore_dest Id, shifts Shift>
+consteval auto bind_operation_with_shift(impl_array& arr) -> void {
+    if constexpr (Id == ignore_dest::off) {
+        arr[arm_instruction(
+            Instr,
+            immediate_operand::off,
+            Shift,
+            s_bit::off
+        ).as_index()] = &cpu::arm_overload<Operation, immediate_operand::off, Id, s_bit::off, Shift>;
+        arr[arm_instruction(
+            Instr,
+            immediate_operand::on,
+            Shift,
+            s_bit::off
+        ).as_index()] = &cpu::arm_overload<Operation, immediate_operand::on, Id, s_bit::off, Shift>;
+        arr[arm_instruction(
+            Instr,
+            immediate_operand::off,
+            Shift,
+            s_bit::on
+        ).as_index()] = &cpu::arm_overload<Operation, immediate_operand::off, Id, s_bit::on, Shift>;
+        arr[arm_instruction(
+            Instr,
+            immediate_operand::on,
+            Shift,
+            s_bit::on
+        ).as_index()] = &cpu::arm_overload<Operation, immediate_operand::on, Id, s_bit::on, Shift>;
+    } else {
+        arr[arm_instruction(
+            Instr,
+            immediate_operand::off,
+            Shift,
+            s_bit::off
+        ).as_index()] = &cpu::arm_overload<Operation, immediate_operand::off, Id, s_bit::off, Shift>;
+        arr[arm_instruction(
+            Instr,
+            immediate_operand::on,
+            Shift,
+            s_bit::off
+        ).as_index()] = &cpu::arm_overload<Operation, immediate_operand::on, Id, s_bit::off, Shift>;
+    }
+}
+template<auto Operation, arm_instruction::set Instr, ignore_dest Id> 
+consteval auto bind_operation(impl_array& arr) -> void {
+    cpu::bind_operation_with_shift<Operation, Instr, Id, shifts::null>(arr);   
+    cpu::bind_operation_with_shift<Operation, Instr, Id, shifts::asr32>(arr);   
+    cpu::bind_operation_with_shift<Operation, Instr, Id, shifts::lsr32>(arr);   
+    cpu::bind_operation_with_shift<Operation, Instr, Id, shifts::rrx>(arr);   
+    cpu::bind_operation_with_shift<Operation, Instr, Id, shifts::lsl>(arr);   
+    cpu::bind_operation_with_shift<Operation, Instr, Id, shifts::lsr>(arr);   
+    cpu::bind_operation_with_shift<Operation, Instr, Id, shifts::asr>(arr);   
+    cpu::bind_operation_with_shift<Operation, Instr, Id, shifts::ror>(arr);   
+    cpu::bind_operation_with_shift<Operation, Instr, Id, shifts::rslsl>(arr);   
+    cpu::bind_operation_with_shift<Operation, Instr, Id, shifts::rslsr>(arr);   
+    cpu::bind_operation_with_shift<Operation, Instr, Id, shifts::rsasr>(arr);   
+    cpu::bind_operation_with_shift<Operation, Instr, Id, shifts::rsror>(arr);   
+}
+consteval auto init_arm_impl_ptrs() {
+    impl_array ret{};
+    cpu::bind_operation<eor_impl, arm_instruction::set::eor, ignore_dest::off>(ret);
+    cpu::bind_operation<and_impl, arm_instruction::set::and_, ignore_dest::off>(ret);
+    cpu::bind_operation<orr_impl, arm_instruction::set::orr, ignore_dest::off>(ret);
+    cpu::bind_operation<bic_impl, arm_instruction::set::bic, ignore_dest::off>(ret);
+    cpu::bind_operation<add_impl, arm_instruction::set::add, ignore_dest::off>(ret);
+    cpu::bind_operation<adc_impl, arm_instruction::set::adc, ignore_dest::off>(ret);
+    cpu::bind_operation<sub_impl, arm_instruction::set::sub, ignore_dest::off>(ret);
+    cpu::bind_operation<sbc_impl, arm_instruction::set::sbc, ignore_dest::off>(ret);
+    cpu::bind_operation<rsb_impl, arm_instruction::set::rsb, ignore_dest::off>(ret);
+    cpu::bind_operation<rsc_impl, arm_instruction::set::rsc, ignore_dest::off>(ret);
+    cpu::bind_operation<and_impl, arm_instruction::set::tst, ignore_dest::on>(ret);
+    cpu::bind_operation<eor_impl, arm_instruction::set::teq, ignore_dest::on>(ret);
+    cpu::bind_operation<sub_impl, arm_instruction::set::cmp, ignore_dest::on>(ret);
+    cpu::bind_operation<add_impl, arm_instruction::set::cmn, ignore_dest::on>(ret);
     return ret;
 }
-#undef GEN_ASIGN_IMPL_PTR
-#undef GEN_ASIGN_IMPL_PTR_SHIFT_VARIATION
-#undef GEN_ASIGN_IMPL_PTR_SHIFT_AND_S_VARIATION
-inline constexpr std::array<impl_ptr, arm_instruction_set::undefined> arm_impl_ptrs = init_arm_impl_ptrs();
+inline constexpr impl_array arm_impl_ptrs = init_arm_impl_ptrs();
 
 }
 
-auto execute_arm(arm7tdmi& cpu, arm_instruction_set instruction, u32 opcode) -> void {
-    std::invoke(arm_impl_ptrs[instruction], cpu, opcode);
+auto execute_arm(arm7tdmi& cpu, arm_instruction instruction, u32 opcode) -> void {
+    std::invoke(arm_impl_ptrs[instruction.as_index()], cpu, opcode);
 }
 
 }

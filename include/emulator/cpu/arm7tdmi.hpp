@@ -43,7 +43,6 @@ public:
     bus m_bus;
     std::queue<u32> m_prefetch_buffer;
     register_manager m_registers;
-    std::vector<void(arm7tdmi::*)(u16)> m_thumb_impl;
 private:
 
 

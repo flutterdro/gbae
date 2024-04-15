@@ -1,67 +1,17 @@
-#ifndef INSTRUCTION_EXECUTION_IMPLEMENTATION_HPP_CJNFJCFNK
-#define INSTRUCTION_EXECUTION_IMPLEMENTATION_HPP_CJNFJCFNK
-#include "emulator/cpu/instruction-impl/detail/instruction-executor-decl.hpp"
+#ifndef INSTRUCTION_EXECUTION_INL_CJNFJCFNK
+#define INSTRUCTION_EXECUTION_INL_CJNFJCFNK
 #include "fgba-defines.hpp"
-#include "emulator/cpu/lla.hpp"
 #include "emulator/cpu/shifter.hpp"
-
 namespace fgba::cpu {
 
 namespace  {
 
-[[nodiscard]]constexpr auto andnot(u32 operand1, u32 operand2) { return operand1 & (~operand2); }
-[[nodiscard]]constexpr auto andwastaken(u32 operand1, u32 operand2) { return operand1 & operand2; }
-[[nodiscard]]constexpr auto eorwastaken(u32 operand1, u32 operand2) { return operand1 ^ operand2; }
-[[nodiscard]]constexpr auto orrwastaken(u32 operand1, u32 operand2) { return operand1 | operand2; }
-[[nodiscard]]constexpr auto notwastaken(u32 operand1) { return ~operand1; }
-[[nodiscard]]constexpr auto identity(u32 operand1) { return operand1; }
 [[nodiscard]]constexpr auto check_overflow(u32 operand1, u32 operand2, u32 result) {
     return ((operand1 >> 31l) == (operand2 >> 31u)) && ((operand1 >> 31u) != (result >> 31u));
 }
 
 }
 //TODO: You will need to write a shit ton of tests for this shit
-#define GEN_ARM_DATA_PROCESSING \
-    GEN_ARM_DATA_PROCESSING_LOGICAL\
-    GEN_ARM_DATA_PROCESSING_SINGLE_OPERAND\
-    GEN_ARM_DATA_PROCESSING_ARITHMETIC
-#define GEN_ARM_DATA_PROCESSING_ARITHMETIC\
-    GEN_ARM_DATA_PROCESSING_SHIFT_AND_I_VARIATIONS(GEN_ARM_ARITHMETIC_OPERATION, add, add_impl)\
-    GEN_ARM_DATA_PROCESSING_SHIFT_AND_I_VARIATIONS(GEN_ARM_ARITHMETIC_OPERATION, sub, sub_impl)\
-    GEN_ARM_DATA_PROCESSING_SHIFT_AND_I_VARIATIONS(GEN_ARM_ARITHMETIC_OPERATION, rsb, rsb_impl)\
-    GEN_ARM_DATA_PROCESSING_SHIFT_AND_I_VARIATIONS(GEN_ARM_ARITHMETIC_OPERATION, adc, adc_impl)\
-    GEN_ARM_DATA_PROCESSING_SHIFT_AND_I_VARIATIONS(GEN_ARM_ARITHMETIC_OPERATION, sbc, sbc_impl)\
-    GEN_ARM_DATA_PROCESSING_SHIFT_AND_I_VARIATIONS(GEN_ARM_ARITHMETIC_OPERATION, rsc, rsc_impl)\
-    GEN_ARM_DATA_PROCESSING_SHIFT_AND_I_VARIATIONS(GEN_ARM_ARITHMETIC_OPERATION_NORESULT, cmp, sub_impl)\
-    GEN_ARM_DATA_PROCESSING_SHIFT_AND_I_VARIATIONS(GEN_ARM_ARITHMETIC_OPERATION_NORESULT, cmn, add_impl)
-#define GEN_ARM_DATA_PROCESSING_SINGLE_OPERAND \
-    GEN_ARM_DATA_PROCESSING_SHIFT_AND_I_VARIATIONS(GEN_ARM_SINGLE_OPERAND_OPERATION, mov,  identity) \
-    GEN_ARM_DATA_PROCESSING_SHIFT_AND_I_VARIATIONS(GEN_ARM_SINGLE_OPERAND_OPERATION, mvn, notwastaken)
-#define GEN_ARM_DATA_PROCESSING_LOGICAL \
-    GEN_ARM_DATA_PROCESSING_SHIFT_AND_I_VARIATIONS(GEN_ARM_LOGICAL_OPERATION, and_, andwastaken)\
-    GEN_ARM_DATA_PROCESSING_SHIFT_AND_I_VARIATIONS(GEN_ARM_LOGICAL_OPERATION, eor, eorwastaken)\
-    GEN_ARM_DATA_PROCESSING_SHIFT_AND_I_VARIATIONS(GEN_ARM_LOGICAL_OPERATION, orr, orrwastaken)\
-    GEN_ARM_DATA_PROCESSING_SHIFT_AND_I_VARIATIONS(GEN_ARM_LOGICAL_OPERATION, bic, andnot)\
-    GEN_ARM_DATA_PROCESSING_SHIFT_AND_I_VARIATIONS(GEN_ARM_LOGICAL_OPERATION_NORESULT, tst, andwastaken)\
-    GEN_ARM_DATA_PROCESSING_SHIFT_AND_I_VARIATIONS(GEN_ARM_LOGICAL_OPERATION_NORESULT, teq, eorwastaken)
-#define GEN_ARM_DATA_PROCESSING_SHIFT_AND_I_VARIATIONS(macro, arm_instruction_base, operator)\
-    GEN_ARM_DATA_PROCESSING_SHIFT_VARIATIONS(macro##_WITH_SHIFT, arm_instruction_base, operator)\
-    GEN_ARM_DATA_PROCESSING_IMMEDIATE_OPERAND(macro##_WITH_IMMEDIATE_OPERAND, arm_instruction_base, operator)
-#define GEN_ARM_DATA_PROCESSING_IMMEDIATE_OPERAND(macro, arm_instruction_base, operator)\
-    macro(arm_instruction_base, operator)
-#define GEN_ARM_DATA_PROCESSING_SHIFT_VARIATIONS(macro, arm_instruction_base, operator)\
-    macro(arm_instruction_base, operator,      )\
-    macro(arm_instruction_base, operator, lsr32)\
-    macro(arm_instruction_base, operator, asr32)\
-    macro(arm_instruction_base, operator, rrx  )\
-    macro(arm_instruction_base, operator, lsl  )\
-    macro(arm_instruction_base, operator, lsr  )\
-    macro(arm_instruction_base, operator, asr  )\
-    macro(arm_instruction_base, operator, ror  )\
-    macro(arm_instruction_base, operator, rslsl)\
-    macro(arm_instruction_base, operator, rslsr)\
-    macro(arm_instruction_base, operator, rsasr)\
-    macro(arm_instruction_base, operator, rsror)
 
 //
 /// LOGICAL OPERATIONS CODE GENERATION (and, orr, eor, bic, tst, teq)
@@ -224,15 +174,6 @@ inline auto instruction_executor::arm_##arm_instruction_base##i(arm7tdmi& cpu, u
     cpu.m_registers.cpsr().set_ccf(ccf::n, destination & (1_u32 << 31));\
     cpu.m_registers.cpsr().set_ccf(ccf::v, check_overflow(cpu.m_registers[rn], operand2, destination));\
 }
-GEN_ARM_DATA_PROCESSING
-
-#undef GEN_ARM_DATA_PROCESSING
-#undef GEN_ARM_DATA_PROCESSING_LOGICAL
-#undef GEN_ARM_DATA_PROCESSING_SINGLE_OPERAND
-#undef GEN_ARM_DATA_PROCESSING_SHIFT_VARIATIONS
-#undef GEN_ARM_LOGICAL_OPERATION_WITH_SHIFT
-#undef GEN_ARM_LOGICAL_OPERATION_NORESULT_WITH_SHIFT
-#undef GEN_ARM_SINGLE_OPERAND_OPERATION_WITH_SHIFT
 
 }
 

@@ -1,8 +1,10 @@
 #ifndef GBA_MMU_H_
 #define GBA_MMU_H_
+#include <__ranges/to.h>
 #include <__utility/integer_sequence.h>
 #include <__utility/to_underlying.h>
 #include <cstddef>
+#include <cstdio>
 #include <fstream>
 #include <functional>
 #include <iostream>
@@ -18,7 +20,8 @@
 #include "emulator/mmu/io-registers-map.hpp"
 #include "emulator/ppu/ppu.hpp"
 #include "fgba-defines.hpp"
-
+namespace stdr = std::ranges;
+namespace stdv = std::views;
 namespace fgba::mmu {
 using bios_spec     = mem_spec<bounds<0x00000000, 0x00004000>, mem_type::rom, bus_size::word>;
 using ewram_spec    = mem_spec<bounds<0x02000000, 0x02040000>, mem_type::ram, bus_size::hword>;
@@ -103,9 +106,9 @@ public:
     auto write(u32 address, T data)
         -> void {
         detail::runtime_get(m_mem, 0, [](auto&& mem_region) {
-
         });
     }
+
     auto load_bios(std::filesystem::path const& path) 
         -> void;
     auto load_gamerom(std::filesystem::path const& path_to_cartridge)

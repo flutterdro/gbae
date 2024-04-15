@@ -78,7 +78,7 @@ auto setup_imgui(GLFWwindow* ctx) -> void {
 
     ImGui_ImplGlfw_InitForOpenGL(ctx, /*install_callbacks=*/true);          // Second param install_callback=true will install GLFW callbacks and chain to existing ones.
     ImGui_ImplOpenGL3_Init();
-    [[maybe_unused]]ImFont* font = io.Fonts->AddFontFromFileTTF("../asset/fonts/ComicShannsMono/ComicShannsMonoNerdFontMono-Regular.otf", 14.0);
+    [[maybe_unused]]ImFont* font = io.Fonts->AddFontFromFileTTF("asset/fonts/ComicShannsMono/ComicShannsMonoNerdFontMono-Regular.otf", 14.0);
 }
 
 frame::frame(GLFWwindow* window)
@@ -125,7 +125,7 @@ auto draw_main_gui(gameboy_advance &gba, display const& disp) -> void {
             ImGui::Separator();
             ImGui::MenuItem("Save", nullptr, &display_cpu_data);
             ImGui::MenuItem("Save as", nullptr, &display_cpu_data);
-            ImGui::MenuItem("Save all", nullptr, &display_cpu_data, false);
+            ImGui::MenuItem("Save all", nullptr, &display_cpu_data, false); 
             ImGui::EndMenu();
         } 
         if (ImGui::BeginMenu("Edit")) {

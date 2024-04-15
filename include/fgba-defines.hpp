@@ -28,6 +28,15 @@ consteval auto operator""_i16(unsigned long long i)
 consteval auto operator""_i8(unsigned long long i) 
     -> i8 { return static_cast<i8>(i); }
 
+#if defined(__clang__)
+    #define FGBA_FORCE_INLINE [[clang::always_inline]]
+#elif defined(__GNUC__)
+    #define FGBA_FORCE_INLINE [[gnu::always_inline]]
+#elif defined(_MSC_VER_)
+    #define FGBA_FORCE_INLINE [[msvc::forceinline]]
+#else 
+#warning Couldnt define forceinline
 
+#endif // DEBUG
 
 #endif

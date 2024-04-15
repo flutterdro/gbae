@@ -2,44 +2,14 @@
 #define FGBA_DEFINES_HPP
 #include <__mdspan/extents.h>
 #include <__mdspan/mdspan.h>
-#include <cassert>
 #include <cstring>
-#include <functional>
-#include <span>
-#include <type_traits>
-#include <utility>
 #include <cstddef>
-#include <memory>
-#include <ranges>
-#include <vector>
-#include <bit>
-#include <algorithm>
+#include "fgba-defines.hpp"
 //Utility header where helpers and aliases are defined
 
+
 namespace fgba {
-namespace stdr = std::ranges;
 //to be completely portable I should've used uint_least32_t etc but it complicates things way too much
-using u32 = std::uint32_t;
-static_assert(sizeof(u32) == 4 * sizeof(std::byte), "God is dead");
-consteval auto operator""_u32(unsigned long long i) 
-    -> u32 { return static_cast<u32>(i); }
-using u16 = std::uint16_t;
-static_assert(sizeof(u16) == 2 * sizeof(std::byte), "God remains dead");
-consteval auto operator""_u16(unsigned long long i) 
-    -> u16 { return static_cast<u16>(i); }
-using u8  = std::uint8_t;
-static_assert(sizeof(u8) == sizeof(std::byte), "And we killed him");
-consteval auto operator""_u8(unsigned long long i) 
-    -> u8 { return static_cast<u8>(i); }
-using i32 = std::int32_t;
-consteval auto operator""_i32(unsigned long long i) 
-    -> i32 { return static_cast<i32>(i); }
-using i16 = std::int16_t;
-consteval auto operator""_i16(unsigned long long i) 
-    -> i16 { return static_cast<i16>(i); }
-using i8  = std::int8_t;
-consteval auto operator""_i8(unsigned long long i) 
-    -> i8 { return static_cast<i8>(i); }
 template<typename T>
 struct half_width;
 template<>
@@ -51,8 +21,6 @@ using half_width_t = typename half_width<T>::type;
 using lcd_display_view = std::mdspan<std::byte const, std::extents<size_t, 3, 240, 160>>;
 
 constexpr std::byte uninitialized_byte{0xeb};
-namespace stdr = std::ranges;
-namespace stdv = std::views;
 
 namespace cpu {
 enum class mode : u32 {
@@ -71,6 +39,40 @@ enum ccf : u32 {
     c = 1_u32 << 29,
     v = 1_u32 << 28,
 };
+template<typename E>
+consteval auto enum_size() -> size_t { return E::size; }
+enum class shifts : unsigned {
+    null = 0,
+    lsr32,
+    asr32,
+    rrx,
+
+    lsl,
+    lsr,
+    asr,
+    ror,
+
+    rslsl,
+    rslsr,
+    rsasr,
+    rsror,
+
+    count,
+};
+
+enum class s_bit : unsigned {
+    on  = 1,
+    off = 0,
+
+    count,
+};
+
+enum class immediate_operand : unsigned{
+    off = 0,
+    on  = 1,
+    
+    count,
+};
 
 enum registers {
     r0 = 0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, lr, pc,
@@ -84,59 +86,7 @@ enum registers {
 };
 
 enum arm_instruction_set {
-    //
-    /// BRANCHING
-    //
 
-    bx = 0, b, bl,
-
-    //
-    /// DATA PROCESSING
-    //
-#define GEN_VARIATIONS(name) \
-    name ## lsr32, name ## asr32, name ## rrx, name ## lsl, name ## lsr, name ## asr, name ## ror, \
-    name ## rslsl, name ## rslsr, name ## rsasr, name ## rsror, \
-    name ## lsr32 ## s, name ## asr32 ## s, name ## rrx ## s, name ## lsl ## s, name ## lsr ## s, name ## asr ## s, name ## ror ## s, \
-    name ## rslsl ## s, name ## rslsr ## s, name ## rsasr ## s, name ## rsror ## s, \
-    name ## i, name ## is, name ## s, name
-#define GEN_VARIATIONS_NO_S(name) \
-    name ## lsr32, name ## asr32, name ## rrx, name ## lsl, name ## lsr, name ## asr, name ## ror, \
-    name ## rslsl, name ## rslsr, name ## rsasr, name ## rsror, \
-    name ## i, name
-    /// LOGICAL GROUP
-
-    // and
-    GEN_VARIATIONS(and_),
-    GEN_VARIATIONS(orr), 
-    GEN_VARIATIONS(eor), 
-    GEN_VARIATIONS(bic), 
-
-    /// NO DESTINATION LOGICAL GROUP
-
-    // tst
-    GEN_VARIATIONS_NO_S(tst),
-    GEN_VARIATIONS_NO_S(teq),
-
-    /// ARITHMETIC GROUP
-    GEN_VARIATIONS(add), 
-    GEN_VARIATIONS(adc), 
-    GEN_VARIATIONS(sub), 
-    GEN_VARIATIONS(sbc), 
-    GEN_VARIATIONS(rsb), 
-    GEN_VARIATIONS(rsc), 
-
-    /// NO DESTINATION ARITHMETIC GROUP
-    GEN_VARIATIONS_NO_S(cmp),
-    GEN_VARIATIONS_NO_S(cmn),
-
-    /// SINGLE OPERAND GROUP
-
-    // mov
-    GEN_VARIATIONS(mov), 
-    // movn
-    GEN_VARIATIONS(mvn), 
-    
-#undef GEN_SHIFT_VARIATIONS
     undefined,
 };
 
