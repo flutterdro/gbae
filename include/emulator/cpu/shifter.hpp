@@ -7,6 +7,7 @@
 #include "emulator/cpudefines.hpp"
 #include "fgba-defines.hpp"
 #include "registermanager.hpp"
+#include "emulator/cpu/instruction-impl/instruction-flags.hpp"
 namespace fgba::cpu {
 namespace shifter {
 namespace {

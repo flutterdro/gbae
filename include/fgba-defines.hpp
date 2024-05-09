@@ -13,14 +13,21 @@ using i16 = std::int16_t;
 using u32 = std::uint32_t;
 using i32 = std::int32_t;
 
+using u64 = std::uint64_t;
+using i64 = std::uint64_t;
+
 using usize = std::size_t;
 
+consteval auto operator""_u64(unsigned long long i) 
+    -> u64 { return static_cast<u64>(i); }
 consteval auto operator""_u32(unsigned long long i) 
     -> u32 { return static_cast<u32>(i); }
 consteval auto operator""_u16(unsigned long long i) 
     -> u16 { return static_cast<u16>(i); }
 consteval auto operator""_u8(unsigned long long i) 
     -> u8 { return static_cast<u8>(i); }
+consteval auto operator""_i64(unsigned long long i) 
+    -> i64 { return static_cast<i64>(i); }
 consteval auto operator""_i32(unsigned long long i) 
     -> i32 { return static_cast<i32>(i); }
 consteval auto operator""_i16(unsigned long long i) 

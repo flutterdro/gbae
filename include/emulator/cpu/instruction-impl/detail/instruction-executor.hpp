@@ -1,6 +1,7 @@
 #ifndef INSTRUCTION_EXECUTION_HPP_KCNFKJCN
 #define INSTRUCTION_EXECUTION_HPP_KCNFKJCN
 
+#include "emulator/cpu/instruction-impl/instruction-flags.hpp"
 #include "emulator/cpudefines.hpp"
 #include "emulator/cpu/arm7tdmi.hpp"
 #include "fgba-defines.hpp"
@@ -29,6 +30,24 @@ struct instruction_executor {
         -> void;
     template<immediate_operand I, s_bit S, shifts Shift, single_operand_operation Operation>
     static auto arm_single_operand(arm7tdmi&, u32 instruction) 
+        -> void;
+    template<s_bit S, accumulate A>
+    static auto arm_multiply(arm7tdmi&, u32 instruction)
+        -> void;
+    template<s_bit S, accumulate A, mll_signedndesd MS>
+    static auto arm_multiply_long(arm7tdmi&, u32 instruction)
+        -> void;
+    template<immediate_operand I, which_psr P, mask M>
+    static auto arm_move_to_psr(arm7tdmi&, u32 instruction)
+        -> void;
+    template<immediate_operand I, which_psr P, mask M>
+    static auto arm_move_from_psr(arm7tdmi&, u32 instruction)
+        -> void;
+    template<indexing Ind>
+    static auto arm_data_store(arm7tdmi&, u32 instruction)
+        -> void;
+    template<immediate_operand Im, shifts Shift, direction Dir, indexing Ind, write_back Wb, data_size Data>
+    static auto arm_block_data_store(arm7tdmi&, u32 instruction)
         -> void;
 };
 } //namespace fgba::cpu
@@ -72,6 +91,7 @@ auto instruction_executor::arm_logical(arm7tdmi& cpu, u32 instruction) -> void {
         regs.cpsr().set_ccf(ccf::z, not res);
         regs.cpsr().set_ccf(ccf::n, res & (1_u32 << 31));
     }
+    
 }
 
 template<immediate_operand I, shifts Shift, logical_operation Operation>
@@ -127,6 +147,135 @@ auto instruction_executor::arm_single_operand(arm7tdmi& cpu, u32 instruction) ->
         regs.cpsr().set_ccf(ccf::n, res & (1_u32 << 31));
     }
 }
+
+template<s_bit S, accumulate A>
+auto instruction_executor::arm_multiply(arm7tdmi& cpu, u32 instruction)
+    -> void {
+    auto const rd = instruction >> 16 & 0xf;
+    [[maybe_unused]]
+    auto const rn = instruction >> 12 & 0xf;
+    auto const rs = instruction >>  8 & 0xf;
+    auto const rm = instruction >>  0 & 0xf;
+
+    auto& regs = cpu.m_registers;
+
+    auto accumulated = u32{0};
+    if constexpr (A == accumulate::on) accumulated = regs[rn];
+
+    auto const mul_res = regs[rd] = regs[rm] * regs[rs] + accumulated;
+
+    if constexpr (S == s_bit::on) {
+        regs.cpsr().set_ccf(ccf::n, mul_res & 1_u32 << 31);
+        regs.cpsr().set_ccf(ccf::z, not mul_res);
+        regs.cpsr().set_ccf(ccf::c, 0);
+    }
+}
+
+template<s_bit S, accumulate A, mll_signedndesd MS>
+auto instruction_executor::arm_multiply_long(arm7tdmi& cpu, u32 instruction)
+    -> void {
+    auto const rdhi = instruction >> 16 & 0xf;
+    auto const rdlo = instruction >> 12 & 0xf;
+    auto const rs   = instruction >>  8 & 0xf;
+    auto const rm   = instruction >>  0 & 0xf;
+
+    auto& regs = cpu.m_registers;
+    // I am feeling a bit quirky today
+    // Also I am just using unsigned instead of seperating by signdendess
+    // I really can't wrap my head around why they are different for now
+    auto accumulated = u64{0};
+    if constexpr (A == accumulate::on) accumulated = u64{regs[rdhi]} << 32 | u64{regs[rdlo]};
+    auto const operand1 = u64{regs[rs]};
+    auto const operand2 = u64{regs[rm]};
+
+    auto const mll_res  = operand1 * operand2 + accumulated;
+    regs[rdlo] = mll_res       & 0xffffffff;
+    regs[rdhi] = mll_res >> 31 & 0xffffffff;
+
+    if constexpr (S == s_bit::on) {
+        regs.cpsr().set_ccf(ccf::n, mll_res & 1_u64 << 63);
+        regs.cpsr().set_ccf(ccf::z, not mll_res);
+        // for now I will just set c and v to zero
+        regs.cpsr().set_ccf(ccf::c, 0);
+        regs.cpsr().set_ccf(ccf::v, 0);
+    }
+}
+
+
+template<immediate_operand I, which_psr P, mask M>
+static auto arm_move_to_psr(arm7tdmi& cpu, u32 instruction)
+    -> void {
+    auto& regs = cpu.m_registers;
+    auto const rd = instruction >> 12 & 0xf;
+
+    if constexpr (P == which_psr::cpsr) {
+        regs[rd] = regs.cpsr().val;
+    } else {
+        regs[rd] = regs.spsr().val;
+    }
+}
+template<immediate_operand I, which_psr P, mask M>
+static auto arm_move_from_psr(arm7tdmi& cpu, u32 instruction)
+    -> void {
+    auto& regs = cpu.m_registers;
+    auto const operand = cpu::i_have_no_clue_how_to_name_this<I, s_bit::off, shifts::null>(cpu, instruction);
+
+    auto mask = u32{0};
+    if constexpr (M == mask::on) operand &= ~(mask = 0xf_u32 << 27);
+
+    if constexpr (P == which_psr::cpsr) {
+        regs.cpsr().val = (regs.cpsr().val & ~mask) | operand;
+    } else {
+        regs.spsr().val = (regs.spsr().val & ~mask) | operand;
+    }
+
+}
+
+template<immediate_operand Im, shifts Shift, direction Dir, indexing Ind, write_back Wb, data_size Data>
+static auto arm_data_store(arm7tdmi& cpu, u32 instruction) 
+    -> void {
+    auto& regs = cpu.m_registers;
+    auto const offset = [&] -> u32 {
+        auto const abs_offset = 
+            (Im == immediate_operand::on ? 
+                (Data == data_size::hword ?
+                    (instruction >> 4_u32 & 0xf_u32) | (instruction & 0xf_u32) :
+                    (instruction & 0xfff_u32)
+                ) :
+                (cpu::i_have_no_clue_how_to_name_this<immediate_operand::off, s_bit::off, Shift>(cpu, instruction))
+            );
+        auto const adjusted_sign_offset = 
+            Dir == direction::up ?
+                abs_offset :
+               -abs_offset;
+        return adjusted_sign_offset;
+    }();
+
+    auto const data_to_load_on_bus = [&] -> u32 {
+        auto const data_to_transfer = regs[instruction >> 12_u32 & 0xf_u32];
+        if constexpr (Data == data_size::byte) {
+            auto const byte = data_to_transfer & 0xff_u32;
+            return byte | byte << 8_u32 | byte << 16_u32 | byte << 24_u32;
+        } else if constexpr (Data == data_size::hword) {
+            auto const hword = data_to_transfer & 0xffff_u32;
+            return hword | hword << 16_u32;
+        }
+        return data_to_transfer;
+    }();
+    cpu.m_bus.load_on(data_to_load_on_bus);
+
+    auto const r_b = instruction >> 16_u32 & 0xf_u32;
+    if constexpr (Ind == indexing::post) {
+        cpu.m_bus.access_write(address{regs[r_b]}, Data);
+    } else {
+        cpu.m_bus.access_write(address{regs[r_b] + offset}, Data);
+    }
+
+    if constexpr (Wb == write_back::on or Ind == indexing::post) {
+        regs[r_b] += offset;
+    }
+}
+
 
 }
 

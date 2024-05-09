@@ -20,16 +20,6 @@ public:
         -> void;
     auto interrupt_thumb(u16 instruction)
         -> void;
-    template<std::invocable<bus::signals> F>
-    auto conect_read(F&& func) 
-        -> void {
-        m_bus.conect_read(std::forward<F>(func));
-    }
-    template<std::invocable<u32, bus::signals> F>
-    auto conect_write(F&& func)
-        -> void {
-        m_bus.conect_write(std::forward<F>(func));
-    }
     [[nodiscard]]auto get_regitsters_contents() const noexcept
         -> register_manager const& {
             return m_registers;

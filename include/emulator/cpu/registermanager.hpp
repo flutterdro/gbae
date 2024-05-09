@@ -12,7 +12,7 @@ namespace fgba::cpu {
 struct psr {
     constexpr auto set_ccf(ccf const flag, bool b) noexcept
         -> void {
-        val = (val & (~flag)) | (flag * b);
+        val = (val & (~flag)) | (flag * static_cast<u32>(b));
     } 
     constexpr auto set_ccf(ccf const flag) noexcept
         -> void {
@@ -24,31 +24,31 @@ struct psr {
     }
     constexpr auto check_ccf(ccf const flag) const noexcept
         -> bool {
-        return val & flag;
+        return (val & flag) != 0u;
     }
     constexpr auto fiq_disable(bool b) noexcept
         -> void {
-        val = (val & ~(1_u32 << 6)) | ((1_u32 << 6) * b);
+        val = (val & ~(1_u32 << 6)) | ((1_u32 << 6) * static_cast<u32>(b));
     }
     constexpr auto irq_disable(bool b) noexcept
         -> void {
-        val = (val & ~(1_u32 << 7)) | ((1_u32 << 7) * b);
+        val = (val & ~(1_u32 << 7)) | ((1_u32 << 7) * static_cast<u32>(b));
     }
     constexpr auto use_thumb(bool b) noexcept
         -> void {
-        val = (val & ~(1_u32 << 5)) | ((1_u32 << 5) * b);
+        val = (val & ~(1_u32 << 5)) | ((1_u32 << 5) * static_cast<u32>(b));
     }
-    constexpr auto is_thumb() noexcept
+    constexpr auto is_thumb() const noexcept
         -> bool {
-        return val & (1_u32 << 5);
+        return (val & (1_u32 << 5)) != 0u;
     }
-    constexpr auto is_fiq_disabled() noexcept
+    constexpr auto is_fiq_disabled() const noexcept
         -> bool {
-        return val & (1_u32 << 6);
+        return (val & (1_u32 << 6)) != 0u;
     }
-    constexpr auto is_irq_disabled() noexcept
+    constexpr auto is_irq_disabled() const noexcept
         -> bool {
-        return val & (1_u32 << 7);
+        return (val & (1_u32 << 7)) != 0u;
     }
     constexpr auto get_mode() const noexcept
         -> mode { return static_cast<mode>(val & 0b11111); }
@@ -86,11 +86,11 @@ public:
         switch (mode) {
             case mode::usr: asignregisters(usr); break;
             case mode::sys: asignregisters(sys); break;
-            case mode::fiq: asignregisters(fiq); break;
-            case mode::irq: asignregisters(irq); break;
-            case mode::svc: asignregisters(svc); break;
-            case mode::abt: asignregisters(abt); break;
-            case mode::und: asignregisters(und); break;
+            case mode::fiq: asignregisters(fiq); m_spsr_index = 0; break;
+            case mode::irq: asignregisters(irq); m_spsr_index = 1;  break;
+            case mode::svc: asignregisters(svc); m_spsr_index = 2; break;
+            case mode::abt: asignregisters(abt); m_spsr_index = 3; break;
+            case mode::und: asignregisters(und); m_spsr_index = 4; break;
             default: assert(false);
         } 
     }
@@ -108,11 +108,16 @@ public:
         -> psr& { return m_cpsr; }
     [[nodiscard]]constexpr auto cpsr() const noexcept
         -> psr const& { return m_cpsr; }
+    [[nodiscard]]constexpr auto spsr() noexcept
+        -> psr& { return m_spsr[m_spsr_index]; }
+    [[nodiscard]]constexpr auto spsr() const noexcept
+        -> psr const& { return m_spsr[m_spsr_index]; }
 private:
     psr m_cpsr; 
     std::array<u32, 31> m_register_bank;
     std::array<psr, 5> m_spsr;
     std::array<unsigned, 16> m_active_registers_offset;
+    unsigned m_spsr_index;
 };
 
 }

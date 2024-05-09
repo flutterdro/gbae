@@ -4,6 +4,7 @@
 #include "emulator/cpudefines.hpp"
 #include "fgba-defines.hpp"
 #include "utility/fatexception.hpp"
+#include "emulator/cpu/instruction-impl/instruction-flags.hpp"
 #include <cstddef>
 #include <utility>
 

@@ -41,6 +41,7 @@ inline auto rsc_impl(u32 operand1, u32 operand2, u32* res, u32 carryin) noexcept
     -> bool {
     return sbc_impl(operand2, operand1, res, carryin); //NOLINT
 }
+
 }
 
 

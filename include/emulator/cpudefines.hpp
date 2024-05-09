@@ -1,15 +1,12 @@
 #ifndef FGBA_DEFINES_HPP
 #define FGBA_DEFINES_HPP
-#include <__mdspan/extents.h>
-#include <__mdspan/mdspan.h>
+#include <mdspan>
 #include <cstring>
 #include <cstddef>
 #include "fgba-defines.hpp"
 //Utility header where helpers and aliases are defined
 
-
 namespace fgba {
-//to be completely portable I should've used uint_least32_t etc but it complicates things way too much
 template<typename T>
 struct half_width;
 template<>
@@ -20,7 +17,9 @@ template<typename T>
 using half_width_t = typename half_width<T>::type;
 using lcd_display_view = std::mdspan<std::byte const, std::extents<size_t, 3, 240, 160>>;
 
-constexpr std::byte uninitialized_byte{0xeb};
+inline constexpr std::byte uninitialized_byte{0xeb};
+inline constexpr u32 unitialized_word{0xebebebeb};
+
 
 namespace cpu {
 enum class mode : u32 {
@@ -60,18 +59,16 @@ enum class shifts : unsigned {
     count,
 };
 
-enum class s_bit : unsigned {
-    on  = 1,
-    off = 0,
+enum class data_size {
+    byte,
+    hword,
+    word,
 
     count,
 };
 
-enum class immediate_operand : unsigned{
-    off = 0,
-    on  = 1,
-    
-    count,
+struct address {
+    u32 value;
 };
 
 enum registers {
