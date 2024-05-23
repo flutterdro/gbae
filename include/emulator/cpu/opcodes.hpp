@@ -8,21 +8,75 @@
 #include <cstddef>
 #include <utility>
 
+
+// This code is a mess which I hope would be nice to use 
+//
+// So it is basically a glue which is used to connect execution and decoding
+// since each instruction has a bunch of bells and whistles and i treat them as seperate instructions 
+// based on those whistles, I need a way to distinguish between them and chose a correct one
+//
+// Also lookup of the proper function to execute instruction goes through the array of function
+// pointers. So I need a way to index into it.
+//
+// I came up with the next scheme. arm_instruction and thumb_instruction are 
+// just funky wrappers around the index. It can be constructed based on the base instruction, 
+// which must be passed as a non-type template parametr btw, and a bunch of whistles. 
+// 
+// Index is assembled from base_offset and relative_offset. Here is an example
+// We have next variations of the and_ base instruction:
+// and_ and_asr32 and_lsr32 and_rrx and_lsl and_lsr and_asr and_ror and_rslsl and_rslsr and_rsasr and_rsror and_i
+// and_s and_asr32s and_lsr32s and_rrxs and_lsls and_lsrs and_asrs and_rors and_rslsls and_rslsrs and_rsasrs and_rsrors and_is
+// 
+// relative_offset specifies index of the specific instruction in this group relative to the base instruction. So 
+// relative_offset of and_ is 0, of and_lsr32 is 2 and so on.
+// max_relative_offset<base> specifies amount of the variations of the base so in this case it is equal 26.
+// max_absolute_offset<base> specifies the final index of the instruction past the last one in base's group,
+// which would be the next base instruction, as of now it is orr.
+// max_absolute_offset<base> can be calculated as a sum of all max_absolute_offset of previous instructions as 
+// well as current max_relative_offset or in the recursive form:
+// max_absolute_offset<base> = max_absolute_offset<previous(base)> + max_relative_offset<base>;
+//
+// Finally base_offset is an absolute index of the base instruction 
+// it can be calculated using max_absolute_offset like this:
+// base_offset<base> = max_absolute_offset<previous(base)>;
+
+
 namespace fgba::cpu {
 
 class arm_instruction {
 public:
     enum class set : u32;
-    constexpr arm_instruction(set);
-    constexpr arm_instruction(set, immediate_operand, shifts, s_bit);
-    [[nodiscard]]constexpr auto as_index() const noexcept -> size_t;
-    [[nodiscard]]constexpr auto get_handle() const noexcept -> set;
-    [[nodiscard]]constexpr auto get_base() const noexcept -> arm_instruction;
-    [[nodiscard]]static consteval auto count() noexcept -> size_t;
-private:
-  set m_instruction;
-};
 
+    constexpr arm_instruction(std::size_t hash)
+        : m_instruction_hash{hash} {}
+    template<set>
+    [[nodiscard]]static constexpr auto construct(auto... switches) 
+        -> arm_instruction;
+
+    [[nodiscard]]constexpr auto as_index() const noexcept 
+        -> std::size_t;
+    [[nodiscard]]constexpr auto get_handle() const noexcept 
+        -> std::size_t;
+    [[nodiscard]]constexpr auto get_base() const noexcept 
+        -> set;
+    template<set>
+    [[nodiscard]]constexpr auto get_switches() const noexcept;
+    [[nodiscard]]static consteval auto count() noexcept 
+        -> std::size_t;
+private:
+    template<set>
+    [[nodiscard]]static constexpr auto relative_offset(auto...)
+        -> std::size_t;
+    template<set>
+    inline static constexpr std::size_t max_relative_offset = 1;
+    template<set Instr>
+    inline static constexpr std::size_t max_absolute_offset = 
+        max_absolute_offset<static_cast<set>(std::to_underlying(Instr) - 1)> + max_relative_offset<Instr>;
+    template<set Instr>
+    inline static constexpr std::size_t base_offset = max_absolute_offset<static_cast<set>(std::to_underlying(Instr) - 1)>;
+private:
+    std::size_t m_instruction_hash;
+};
 class thumb_instruction {
 public:
     enum class set : u32;
@@ -39,8 +93,8 @@ private:
 [[nodiscard]]auto mask_for(thumb_instruction) noexcept -> u16;
 [[nodiscard]]auto opcode_for(arm_instruction) noexcept -> u32;
 [[nodiscard]]auto opcode_for(thumb_instruction) noexcept -> u16;
-[[nodiscard]]auto decode(u32) noexcept -> arm_instruction;
-[[nodiscard]]auto decode(u16) noexcept -> thumb_instruction;
+[[nodiscard]]auto decode_arm(u32) noexcept -> arm_instruction;
+[[nodiscard]]auto decode_thumb(u16) noexcept -> thumb_instruction;
 
 namespace detail {
 template<typename... Enums>
@@ -50,132 +104,181 @@ inline constexpr u32 offset = ((std::to_underlying(Enums::count)) * ...);
 enum class arm_instruction::set : u32 {
     b = 0, bx, bl,
     and_, //NOLINT
-    orr = and_ + detail::offset<s_bit, shifts> + detail::offset<s_bit, immediate_operand>,
-    eor = orr  + detail::offset<s_bit, shifts> + detail::offset<s_bit, immediate_operand>,
-    bic = eor  + detail::offset<s_bit, shifts> + detail::offset<s_bit, immediate_operand>,
-    add = bic  + detail::offset<s_bit, shifts> + detail::offset<s_bit, immediate_operand>,
-    adc = add  + detail::offset<s_bit, shifts> + detail::offset<s_bit, immediate_operand>,
-    sub = adc  + detail::offset<s_bit, shifts> + detail::offset<s_bit, immediate_operand>,
-    sbc = sub  + detail::offset<s_bit, shifts> + detail::offset<s_bit, immediate_operand>,
-    rsb = sbc  + detail::offset<s_bit, shifts> + detail::offset<s_bit, immediate_operand>,
-    rsc = rsb  + detail::offset<s_bit, shifts> + detail::offset<s_bit, immediate_operand>,
-    mov = rsc  + detail::offset<s_bit, shifts> + detail::offset<s_bit, immediate_operand>,
-    mvn = mov  + detail::offset<s_bit, shifts> + detail::offset<s_bit, immediate_operand>,
-    tst = mvn  + detail::offset<s_bit, shifts> + detail::offset<s_bit, immediate_operand>,
-    teq = tst  + detail::offset<shifts>        + detail::offset<immediate_operand>,
-    cmp = teq  + detail::offset<shifts>        + detail::offset<immediate_operand>,
-    cmn = cmp  + detail::offset<shifts>        + detail::offset<immediate_operand>,
-    mul = cmn  + detail::offset<shifts>        + detail::offset<immediate_operand>,
+    orr,
+    eor,
+    bic,
+    add,
+    adc,
+    sub,
+    sbc,
+    rsb,
+    rsc,
+    mov,
+    mvn,
+    tst,
+    teq,
+    cmp,
+    cmn,
+    msr,
+    mrs,
+    mul,
+    mll,
+    str,
+    ldr,
     undefined,
     
     count,
 };
-constexpr arm_instruction::arm_instruction(set instr) 
-    : m_instruction{instr} {}
-constexpr arm_instruction::arm_instruction(set base, immediate_operand i, shifts shift, s_bit s) 
-    : m_instruction{0} {
-    using enum set;
-    auto tu = [](set i) { return std::to_underlying(i); };
-    if (tu(base) < tu(and_) or tu(base) >= tu(mul)) { throw fgba::runtime_error("Invalid constructor used"); }
-    if (tu(base) >= tu(tst)) s = s_bit::off;
-    m_instruction = static_cast<set>(
-        std::to_underlying(base) +
-        std::to_underlying(s) * (detail::offset<shifts> + detail::offset<immediate_operand>) +
-        (i == immediate_operand::on ? detail::offset<shifts> : std::to_underlying(shift))
-    );
+
+template<arm_instruction::set Instr>
+constexpr auto arm_instruction::construct(auto... switches) 
+    -> arm_instruction {
+    return arm_instruction{base_offset<Instr> + relative_offset<Instr>(switches...)};
 }
 
-constexpr auto arm_instruction::as_index() const noexcept -> size_t { return std::to_underlying(m_instruction); }
-consteval auto arm_instruction::count() noexcept -> size_t { return std::to_underlying(set::count); }
-constexpr auto arm_instruction::get_base() const noexcept -> arm_instruction {
-    using enum set;
-    auto tu = [](set i) { return std::to_underlying(i); };
-    auto adjust = [tu](set start, set instr, size_t offset) {
+template<>
+inline constexpr std::size_t arm_instruction::max_absolute_offset<arm_instruction::set::b> = 1;
+template<>
+inline constexpr std::size_t arm_instruction::base_offset<arm_instruction::set::b> = 0;
+
+template<>
+constexpr auto arm_instruction::relative_offset<arm_instruction::set::b>()
+    -> std::size_t { return 0; }
+template<>
+inline constexpr std::size_t arm_instruction::max_relative_offset<arm_instruction::set::b> = 1;
+template<>
+constexpr auto arm_instruction::relative_offset<arm_instruction::set::bl>()
+    -> std::size_t { return 0; }
+template<>
+inline constexpr std::size_t arm_instruction::max_relative_offset<arm_instruction::set::bl> = 1;
+template<>
+constexpr auto arm_instruction::relative_offset<arm_instruction::set::bx>()
+    -> std::size_t { return 0; }
+template<>
+inline constexpr std::size_t arm_instruction::max_relative_offset<arm_instruction::set::bx> = 1;
+
+template<>
+constexpr auto arm_instruction::relative_offset<arm_instruction::set::and_>(
+    immediate_operand im_op,
+    shifts shift,
+    s_bit s
+) -> std::size_t {
+    std::size_t s_bit_instructions_offset = 
+        static_cast<std::size_t>(std::to_underlying(s)) *
+        (detail::offset<shifts> + 1);
+    std::size_t shift_or_im_op_offset = 
+        im_op == immediate_operand::on ?
+            detail::offset<shifts> :
+            std::to_underlying(shift);
+    return s_bit_instructions_offset + shift_or_im_op_offset;
+}
+template<>
+inline constexpr std::size_t arm_instruction::max_relative_offset<arm_instruction::set::and_> = 
+    relative_offset<set::and_>(immediate_operand::on, shifts::null, s_bit::on) + 1;
+
+#define FGBA_SETUP_OFFSETS(instr)\
+template<>\
+constexpr auto arm_instruction::relative_offset<arm_instruction::set::instr>(\
+    immediate_operand im_op,\
+    shifts shift,\
+    s_bit s\
+) -> std::size_t { return relative_offset<set::and_>(im_op, shift, s); }\
+template<>\
+inline constexpr std::size_t arm_instruction::max_relative_offset<arm_instruction::set::instr> =\
+    relative_offset<set::instr>(immediate_operand::on, shifts::null, s_bit::on) + 1;
+
+FGBA_SETUP_OFFSETS(orr)
+FGBA_SETUP_OFFSETS(eor)
+FGBA_SETUP_OFFSETS(bic)
+FGBA_SETUP_OFFSETS(add)
+FGBA_SETUP_OFFSETS(adc)
+FGBA_SETUP_OFFSETS(sub)
+FGBA_SETUP_OFFSETS(sbc)
+FGBA_SETUP_OFFSETS(rsb)
+FGBA_SETUP_OFFSETS(rsc)
+FGBA_SETUP_OFFSETS(mov)
+FGBA_SETUP_OFFSETS(mvn)
+
+#undef FGBA_SETUP_OFFSETS
+
+template<>
+constexpr auto arm_instruction::relative_offset<arm_instruction::set::tst>(
+    immediate_operand im_op,
+    shifts shift
+) -> std::size_t {
+    return im_op == immediate_operand::on ? 
+        detail::offset<shifts> :
+        std::to_underlying(shift);
+}
+template<>
+inline constexpr std::size_t arm_instruction::max_relative_offset<arm_instruction::set::tst> =
+    relative_offset<set::tst>(immediate_operand::on, shifts::null) + 1;
+
+#define FGBA_SETUP_OFFSETS(instr)\
+template<>\
+constexpr auto arm_instruction::relative_offset<arm_instruction::set::instr>(\
+    immediate_operand im_op,\
+    shifts shift\
+) -> std::size_t { return relative_offset<set::tst>(im_op, shift); }\
+template<>\
+inline constexpr std::size_t arm_instruction::max_relative_offset<arm_instruction::set::instr> =\
+    relative_offset<set::instr>(immediate_operand::on, shifts::null) + 1;
+
+FGBA_SETUP_OFFSETS(teq)
+FGBA_SETUP_OFFSETS(cmp)
+FGBA_SETUP_OFFSETS(cmn)
+
+#undef FGBA_SETUP_OFFSETS
+
+template<>
+constexpr auto arm_instruction::relative_offset<arm_instruction::set::mrs>(which_psr which_psr)
+    -> std::size_t { return std::to_underlying(which_psr); }
+template<>
+inline constexpr std::size_t arm_instruction::max_relative_offset<arm_instruction::set::mrs> = 2;
+template<>
+constexpr auto arm_instruction::relative_offset<arm_instruction::set::msr>(
+    immediate_operand im_op,
+    mask mask,
+    which_psr which_psr
+) -> std::size_t {
+    auto psr_offset = std::to_underlying(which_psr) * 3;
+    auto mask_offset = mask == mask::on ? 
+        std::to_underlying(im_op) :
+        2;
+    return psr_offset + mask_offset; //NOLINT
+}
+template<>
+inline constexpr std::size_t arm_instruction::max_relative_offset<arm_instruction::set::msr> = 6; 
+
+consteval auto arm_instruction::count() noexcept 
+    -> std::size_t { return base_offset<set::count>; }
+
+constexpr auto arm_instruction::as_index() const noexcept 
+    -> std::size_t { return m_instruction_hash; }
+
+static_assert(arm_instruction::construct<arm_instruction::set::orr>(immediate_operand::off, shifts::null, s_bit::off).as_index() == 29);
+
+constexpr auto arm_instruction::get_base() const noexcept 
+    -> set {
+    return [instruction_hash = this->m_instruction_hash]<std::size_t... Is>(std::index_sequence<Is...>) {
         return static_cast<set>(
-            (tu(instr) - tu(start)) / offset * offset + tu(start)
+            (
+                (
+                    (
+                        instruction_hash < max_absolute_offset<static_cast<set>(Is)> and
+                        instruction_hash >= base_offset<static_cast<set>(Is)>
+                    ) 
+                    * Is
+                ) 
+                + ...
+            )
         );
-    };
-    if (tu(m_instruction) < tu(and_)) return *this;
-    if (tu(m_instruction) < tu(tst)) return adjust(and_, m_instruction, tu(orr) - tu(and_));
-    if (tu(m_instruction) < tu(mul)) return adjust(tst, m_instruction, tu(teq) - tu(tst));
-    return undefined;
+    }(std::make_index_sequence<static_cast<std::size_t>(set::count)>{});
 }
-
+static_assert(arm_instruction::construct<arm_instruction::set::orr>(immediate_operand::off, shifts::null, s_bit::off).get_base() ==
+    arm_instruction::set::orr);
 } // namespace fgba::cpu
 
-namespace fgba::cpu {
-//struct arm_instruction {
-//  u32 mask;
-//  u32 opcode;
-//};
-#define GEN_SPECIFIC_SHIFT(instruction_base, shift_name, shift_mask_exclude,   \
-                           shift_code)                                         \
-  do {                                                                         \
-    ret[instruction_base##shift_name] = {                                      \
-        .mask = ret[instruction_base].mask ^ ((shift_mask_exclude) << 4),        \
-        .opcode = ret[instruction_base].opcode | ((shift_code) << 4),            \
-    };                                                                         \
-  } while (false)
-#define GEN_SHIFT_VARIATIONS(instruction_base)                                 \
-  do {                                                                         \
-    GEN_SPECIFIC_SHIFT(instruction_base, lsr32, 0b00000'00'0, 0b0000'0'01'0);  \
-    GEN_SPECIFIC_SHIFT(instruction_base, asr32, 0b00000'00'0, 0b0000'0'10'0);  \
-    GEN_SPECIFIC_SHIFT(instruction_base, rrx, 0b00000'00'0, 0b0000'0'11'0);    \
-    GEN_SPECIFIC_SHIFT(instruction_base, lsl, 0b11111'00'0, 0b0000'0'00'0);    \
-    GEN_SPECIFIC_SHIFT(instruction_base, lsr, 0b11111'00'0, 0b0000'0'01'0);    \
-    GEN_SPECIFIC_SHIFT(instruction_base, asr, 0b11111'00'0, 0b0000'0'10'0);    \
-    GEN_SPECIFIC_SHIFT(instruction_base, ror, 0b11111'00'0, 0b0000'0'11'0);    \
-    GEN_SPECIFIC_SHIFT(instruction_base, rslsl, 0b11110'00'0, 0b0000'1'00'1);  \
-    GEN_SPECIFIC_SHIFT(instruction_base, rslsr, 0b11110'00'0, 0b0000'1'01'1);  \
-    GEN_SPECIFIC_SHIFT(instruction_base, rsasr, 0b11110'00'0, 0b0000'1'10'1);  \
-    GEN_SPECIFIC_SHIFT(instruction_base, rsror, 0b11110'00'0, 0b0000'1'11'1);  \
-  } while (false)
-constexpr auto arm_instruction_init() {
-  std::array<arm_instruction, arm_instruction_set::undefined> ret;
-//  ret[arm_instruction_set::bx] = {
-//      .mask = 0x0f'ff'ff'f0,
-//      .opcode = 0x01'2f'ff'10,
-//  };
-//  ret[arm_instruction_set::b] = {
-//      .mask = 0x0f'00'00'00,
-//      .opcode = 0x0a'00'00'00,
-//  };
-//  ret[arm_instruction_set::bl] = {
-//      .mask = 0x0f'00'00'00,
-//      .opcode = 0x0b'00'00'00,
-//  };
-//  ret[arm_instruction_set::tst] = {
-//      .mask = 0x0f'ff'0f'f0,
-//      .opcode = 0x0f'11'00'00,
-//  };
-//  //GEN_SHIFT_VARIATIONS(arm_instruction_set::tst);
-//  ret[arm_instruction_set::tsti] = {
-//      .mask = 0x0f'ff'00'00,
-//      .opcode = 0x0f'11'00'00,
-//  };
-//  ret[arm_instruction_set::mov] = {
-//      .mask = 0x0,
-//      .opcode = 0x0,
-//  };
-// // GEN_SHIFT_VARIATIONS(mov);
-//  // ret[arm_instruction_set::movs] = {
-//  //     .mask   = 0x0,
-  //     .opcode = 0x0,
-  // };
-  // GEN_SHIFT_VARIATIONS(movs);
-  // ret[arm_instruction_set::mvns] = {
-  //     .mask   = 0x0,
-  //     .opcode = 0x0,
-  // };
-  // GEN_SHIFT_VARIATIONS(mvns);
 
-  return ret;
-};
-#undef GEN_SHIFT_VARIATIONS
-#undef GEN_SPECIFIC_SHIFT
-
-const std::array opcodes = arm_instruction_init();
-
-} // namespace fgba::cpu
 
 #endif

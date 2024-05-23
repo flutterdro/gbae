@@ -40,7 +40,7 @@ struct instruction_executor {
     template<immediate_operand I, which_psr P, mask M>
     static auto arm_move_to_psr(arm7tdmi&, u32 instruction)
         -> void;
-    template<immediate_operand I, which_psr P, mask M>
+    template<which_psr P>
     static auto arm_move_from_psr(arm7tdmi&, u32 instruction)
         -> void;
     template<indexing Ind>
@@ -202,8 +202,8 @@ auto instruction_executor::arm_multiply_long(arm7tdmi& cpu, u32 instruction)
 }
 
 
-template<immediate_operand I, which_psr P, mask M>
-static auto arm_move_to_psr(arm7tdmi& cpu, u32 instruction)
+template<which_psr P>
+auto instruction_executor::arm_move_from_psr(arm7tdmi& cpu, u32 instruction)
     -> void {
     auto& regs = cpu.m_registers;
     auto const rd = instruction >> 12 & 0xf;
@@ -215,7 +215,7 @@ static auto arm_move_to_psr(arm7tdmi& cpu, u32 instruction)
     }
 }
 template<immediate_operand I, which_psr P, mask M>
-static auto arm_move_from_psr(arm7tdmi& cpu, u32 instruction)
+auto instruction_executor::arm_move_to_psr(arm7tdmi& cpu, u32 instruction)
     -> void {
     auto& regs = cpu.m_registers;
     auto const operand = cpu::i_have_no_clue_how_to_name_this<I, s_bit::off, shifts::null>(cpu, instruction);

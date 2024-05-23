@@ -51,42 +51,34 @@ auto arm_overload(arm7tdmi& cpu, u32 instr) -> void {
 template<auto Operation, arm_instruction::set Instr, ignore_dest Id, shifts Shift>
 consteval auto bind_operation_with_shift(impl_array& arr) -> void {
     if constexpr (Id == ignore_dest::off) {
-        arr[arm_instruction(
-            Instr,
+        arr[arm_instruction::construct<Instr>(
             immediate_operand::off,
             Shift,
             s_bit::off
         ).as_index()] = &cpu::arm_overload<Operation, immediate_operand::off, Id, s_bit::off, Shift>;
-        arr[arm_instruction(
-            Instr,
+        arr[arm_instruction::construct<Instr>(
             immediate_operand::on,
             Shift,
             s_bit::off
         ).as_index()] = &cpu::arm_overload<Operation, immediate_operand::on, Id, s_bit::off, Shift>;
-        arr[arm_instruction(
-            Instr,
+        arr[arm_instruction::construct<Instr>(
             immediate_operand::off,
             Shift,
             s_bit::on
         ).as_index()] = &cpu::arm_overload<Operation, immediate_operand::off, Id, s_bit::on, Shift>;
-        arr[arm_instruction(
-            Instr,
+        arr[arm_instruction::construct<Instr>(
             immediate_operand::on,
             Shift,
             s_bit::on
         ).as_index()] = &cpu::arm_overload<Operation, immediate_operand::on, Id, s_bit::on, Shift>;
     } else {
-        arr[arm_instruction(
-            Instr,
+        arr[arm_instruction::construct<Instr>(
             immediate_operand::off,
-            Shift,
-            s_bit::off
+            Shift
         ).as_index()] = &cpu::arm_overload<Operation, immediate_operand::off, Id, s_bit::off, Shift>;
-        arr[arm_instruction(
-            Instr,
+        arr[arm_instruction::construct<Instr>(
             immediate_operand::on,
-            Shift,
-            s_bit::off
+            Shift
         ).as_index()] = &cpu::arm_overload<Operation, immediate_operand::on, Id, s_bit::off, Shift>;
     }
 }
@@ -127,9 +119,10 @@ inline constexpr impl_array arm_impl_ptrs = init_arm_impl_ptrs();
 
 }
 
-auto execute_arm(arm7tdmi& cpu, arm_instruction instruction, u32 opcode) -> void {
-    std::invoke(arm_impl_ptrs[instruction.as_index()], cpu, opcode);
-}
+
 
 }
 //NOLINTEND
+auto fgba::cpu::execute_arm(arm7tdmi& cpu, arm_instruction instruction, u32 opcode) -> void {
+    std::invoke(arm_impl_ptrs[instruction.as_index()], cpu, opcode);
+}

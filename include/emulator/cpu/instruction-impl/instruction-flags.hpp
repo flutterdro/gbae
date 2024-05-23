@@ -10,8 +10,8 @@ enum class immediate_operand : unsigned{
     count,
 };
 enum class s_bit : unsigned {
-    on  = 1,
     off = 0,
+    on  = 1,
 
     count,
 };
@@ -25,8 +25,8 @@ enum class mll_signedndesd {
     count,
 };
 
-enum class which_psr {
-    cpsr,
+enum class which_psr : unsigned {
+    cpsr = 0,
     spsr,
 
     count,

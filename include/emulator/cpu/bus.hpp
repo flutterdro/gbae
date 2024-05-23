@@ -11,12 +11,6 @@ namespace fgba::cpu {
 class connector {
     using access_read_sig  = auto(void*, address, data_size, u32&) -> void;
     using access_write_sig = auto(void*, address, data_size, u32)  -> void;
-    using read_byte_sig   = auto(void*, address)      -> std::optional<u8>;
-    using read_hword_sig  = auto(void*, address)      -> std::optional<u16>;
-    using read_word_sig   = auto(void*, address)      -> std::optional<u32>;
-    using write_byte_sig  = auto(void*, address, u32) -> void;
-    using write_hword_sig = auto(void*, address, u32) -> void;
-    using write_word_sig  = auto(void*, address, u32) -> void;
 public:
     
     connector() noexcept = default;
