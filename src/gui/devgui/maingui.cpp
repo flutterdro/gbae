@@ -153,7 +153,7 @@ auto draw_main_gui(gameboy_advance &gba, display const& disp) -> void {
         if (display_cpu_data) {
             draw_cpu_registers_dump(gba.dump_cpu_state().get_regitsters_contents());
         }
-        ImGui::BeginChild("");
+        ImGui::BeginChild("##");
         // ImGui::ShowDemoWindow();
         ImGui::EndChild();
     }
