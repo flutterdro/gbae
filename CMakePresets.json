@@ -17,5 +17,13 @@
             "configurePreset": "dev",
             "configuration": "Debug"
         }
+    ],
+    "testPresets": [
+        {
+            "name": "dev",
+            "configurePreset": "dev",
+            "configuration": "Debug"
+        }
     ]
+    
 }
