@@ -23,7 +23,7 @@ if(result AND FGBA_ENABLE_IPO)
                 $<IF:$<CONFIG:RelWithDebInfo,Release>,ON,OFF>
     )
 else()
-    message(FATAL_ERROR "IPO/LTO requested but there is no support for one: ${output}")
+    message(WARNING "IPO/LTO requested but there is no support for one: ${output}")
 endif()
 
 
@@ -43,10 +43,10 @@ target_compile_definitions(fgba_exe
 )
 
 target_include_directories(fgba_exe PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_compile_options(fgba_exe
-    PUBLIC -fexperimental-library
-)
-
+# target_compile_options(fgba_exe
+#     PUBLIC -fexperimental-library
+# )
+#
 target_link_libraries(fgba_exe 
     PRIVATE 
         fmt

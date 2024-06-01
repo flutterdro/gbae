@@ -2,21 +2,18 @@
 #define MEMORY_PRIMITIVES_HPP_
 #include "emulator/cpudefines.hpp"
 #include "spdlog/spdlog.h"
-#include <__algorithm/ranges_fill.h>
-#include <__concepts/invocable.h>
+#include <algorithm>
+#include <concepts>
 #include "utility/fatexception.hpp"
-#include <__ranges/access.h>
-#include <__ranges/concepts.h>
-#include <__utility/to_underlying.h>
+#include <utility>
 #include <array>
 #include <bit>
 #include <cassert>
 #include <cstddef>
 #include <cstring>
 #include <memory>
-#include <utility>
 #include <ranges>
-#include <mdspan>
+// #include <mdspan>
 
 namespace stdr = std::ranges;
 namespace stdv = std::views;

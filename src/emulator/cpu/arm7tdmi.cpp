@@ -2,8 +2,8 @@
 #include "emulator/cpudefines.hpp"
 #include "emulator/cpu/instruction-impl/implementation.hpp"
 #include "emulator/cpu/opcodes.hpp"
-#include <__concepts/invocable.h>
-#include <__utility/to_underlying.h>
+#include <concepts>
+#include <utility>
 namespace fgba::cpu {
 
 arm7tdmi::arm7tdmi() {}

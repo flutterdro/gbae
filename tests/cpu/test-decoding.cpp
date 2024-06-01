@@ -17,9 +17,9 @@ TEST_CASE("Decoding arm b, bl, and bx", "[cpu][decoding]") {
     auto bl_decoded = cpu::decode_arm(instruction_bl);
     auto bx_decoded = cpu::decode_arm(instruction_bx);
 
-    CHECK(b_decoded.get_base()  == b);
-    CHECK(bl_decoded.get_base() == bl);
-    CHECK(bx_decoded.get_base() == bx);
+    CHECK(b_decoded.base()  == b);
+    CHECK(bl_decoded.base() == bl);
+    CHECK(bx_decoded.base() == bx);
 }
 
 consteval auto lookup_data_proccessing_id(cpu::arm_instruction::set base) 

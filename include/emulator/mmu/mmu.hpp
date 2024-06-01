@@ -1,8 +1,7 @@
 #ifndef GBA_MMU_H_
 #define GBA_MMU_H_
-#include <__ranges/to.h>
-#include <__utility/integer_sequence.h>
-#include <__utility/to_underlying.h>
+#include <ranges>
+#include <utility>
 #include <cstddef>
 #include <cstdio>
 #include <fstream>

@@ -6,6 +6,7 @@
 #include "utility/fatexception.hpp"
 #include "emulator/cpu/instruction-impl/instruction-flags.hpp"
 #include <cstddef>
+#include <type_traits>
 #include <utility>
 
 
@@ -13,7 +14,7 @@
 //
 // So it is basically a glue which is used to connect execution and decoding
 // since each instruction has a bunch of bells and whistles and i treat them as seperate instructions 
-// based on those whistles, I need a way to distinguish between them and chose a correct one
+// based on those whistles, I need a way to distinguish between them and chose the correct one
 //
 // Also lookup of the proper function to execute instruction goes through the array of function
 // pointers. So I need a way to index into it.
@@ -43,10 +44,14 @@
 
 namespace fgba::cpu {
 
+
 class arm_instruction {
 public:
     enum class set : u32;
-
+    template<set>
+    struct flag_bundle;
+    template<set Instr>
+    using flag_bundle_t = typename flag_bundle<Instr>::type;
     constexpr arm_instruction(std::size_t hash)
         : m_instruction_hash{hash} {}
     template<set>
@@ -55,12 +60,11 @@ public:
 
     [[nodiscard]]constexpr auto as_index() const noexcept 
         -> std::size_t;
-    [[nodiscard]]constexpr auto get_handle() const noexcept 
-        -> std::size_t;
-    [[nodiscard]]constexpr auto get_base() const noexcept 
+    [[nodiscard]]constexpr auto base() const noexcept 
         -> set;
-    template<set>
-    [[nodiscard]]constexpr auto get_switches() const noexcept;
+    template<set Instr>
+    [[nodiscard]]constexpr auto switches() const noexcept
+        -> flag_bundle_t<Instr>;
     [[nodiscard]]static consteval auto count() noexcept 
         -> std::size_t;
 private:
@@ -73,7 +77,7 @@ private:
     inline static constexpr std::size_t max_absolute_offset = 
         max_absolute_offset<static_cast<set>(std::to_underlying(Instr) - 1)> + max_relative_offset<Instr>;
     template<set Instr>
-    inline static constexpr std::size_t base_offset = max_absolute_offset<static_cast<set>(std::to_underlying(Instr) - 1)>;
+    static constexpr std::size_t base_offset = max_absolute_offset<static_cast<set>(std::to_underlying(Instr) - 1)>;
 private:
     std::size_t m_instruction_hash;
 };
@@ -82,8 +86,8 @@ public:
     enum class set : u32;
     constexpr thumb_instruction(set);
     [[nodiscard]]constexpr auto as_index() const noexcept -> size_t;
-    [[nodiscard]]constexpr auto get_handle() const noexcept -> set;
-    [[nodiscard]]constexpr auto get_base() const noexcept -> thumb_instruction;
+    [[nodiscard]]constexpr auto handle() const noexcept -> set;
+    [[nodiscard]]constexpr auto base() const noexcept -> thumb_instruction;
     [[nodiscard]]static consteval auto count() noexcept -> size_t;
 private:
   set m_instruction;
@@ -133,6 +137,10 @@ enum class arm_instruction::set : u32 {
 template<arm_instruction::set Instr>
 constexpr auto arm_instruction::construct(auto... switches) 
     -> arm_instruction {
+    static_assert(
+        std::is_same_v<std::tuple<decltype(switches)...>, flag_bundle_t<Instr>>,
+        "Wrong instruction flags or their order is incorrect"
+    );
     return arm_instruction{base_offset<Instr> + relative_offset<Instr>(switches...)};
 }
 
@@ -140,6 +148,11 @@ template<>
 inline constexpr std::size_t arm_instruction::max_absolute_offset<arm_instruction::set::b> = 1;
 template<>
 inline constexpr std::size_t arm_instruction::base_offset<arm_instruction::set::b> = 0;
+template<>
+struct arm_instruction::flag_bundle<arm_instruction::set::b> { using type = std::tuple<>; };
+template<>
+constexpr auto arm_instruction::switches<arm_instruction::set::b>() const noexcept
+    -> arm_instruction::flag_bundle_t<arm_instruction::set::b> { return {}; }
 
 template<>
 constexpr auto arm_instruction::relative_offset<arm_instruction::set::b>()
@@ -152,10 +165,20 @@ constexpr auto arm_instruction::relative_offset<arm_instruction::set::bl>()
 template<>
 inline constexpr std::size_t arm_instruction::max_relative_offset<arm_instruction::set::bl> = 1;
 template<>
+struct arm_instruction::flag_bundle<arm_instruction::set::bl> { using type = std::tuple<>; };
+template<>
+constexpr auto arm_instruction::switches<arm_instruction::set::bl>() const noexcept
+    -> arm_instruction::flag_bundle_t<arm_instruction::set::bl> { return {}; }
+template<>
 constexpr auto arm_instruction::relative_offset<arm_instruction::set::bx>()
     -> std::size_t { return 0; }
 template<>
 inline constexpr std::size_t arm_instruction::max_relative_offset<arm_instruction::set::bx> = 1;
+template<>
+struct arm_instruction::flag_bundle<arm_instruction::set::bx> { using type = std::tuple<>; };
+template<>
+constexpr auto arm_instruction::switches<arm_instruction::set::bx>() const noexcept
+    -> arm_instruction::flag_bundle_t<arm_instruction::set::bx> { return {}; }
 
 template<>
 constexpr auto arm_instruction::relative_offset<arm_instruction::set::and_>(
@@ -176,6 +199,27 @@ template<>
 inline constexpr std::size_t arm_instruction::max_relative_offset<arm_instruction::set::and_> = 
     relative_offset<set::and_>(immediate_operand::on, shifts::null, s_bit::on) + 1;
 
+#define FGBA_EXTRACT_SWITCHES_AND_LIKE(Instr)\
+template<>\
+struct arm_instruction::flag_bundle<arm_instruction::set::Instr> { using type = std::tuple<immediate_operand, shifts, s_bit>; };\
+template<>\
+constexpr auto arm_instruction::switches<arm_instruction::set::Instr>() const noexcept\
+    -> arm_instruction::flag_bundle_t<arm_instruction::set::Instr> {\
+    auto relative = m_instruction_hash - base_offset<set::Instr>;\
+    auto s_bit_ret = static_cast<s_bit>(relative / (detail::offset<shifts> + 1));\
+    relative %= detail::offset<shifts> + 1;\
+    auto immediate_operand_ret = static_cast<immediate_operand>(\
+        relative == detail::offset<shifts>\
+    );\
+    if (immediate_operand_ret == immediate_operand::on) {\
+        return {immediate_operand_ret, shifts::null, s_bit_ret};\
+    } else {\
+        return {immediate_operand_ret, static_cast<shifts>(relative), s_bit_ret};\
+    }\
+}
+    
+
+    
 #define FGBA_SETUP_OFFSETS(instr)\
 template<>\
 constexpr auto arm_instruction::relative_offset<arm_instruction::set::instr>(\
@@ -201,6 +245,21 @@ FGBA_SETUP_OFFSETS(mvn)
 
 #undef FGBA_SETUP_OFFSETS
 
+FGBA_EXTRACT_SWITCHES_AND_LIKE(and_)
+FGBA_EXTRACT_SWITCHES_AND_LIKE(orr)
+FGBA_EXTRACT_SWITCHES_AND_LIKE(eor)
+FGBA_EXTRACT_SWITCHES_AND_LIKE(bic)
+FGBA_EXTRACT_SWITCHES_AND_LIKE(add)
+FGBA_EXTRACT_SWITCHES_AND_LIKE(adc)
+FGBA_EXTRACT_SWITCHES_AND_LIKE(sub)
+FGBA_EXTRACT_SWITCHES_AND_LIKE(sbc)
+FGBA_EXTRACT_SWITCHES_AND_LIKE(rsb)
+FGBA_EXTRACT_SWITCHES_AND_LIKE(rsc)
+FGBA_EXTRACT_SWITCHES_AND_LIKE(mov)
+FGBA_EXTRACT_SWITCHES_AND_LIKE(mvn)
+
+#undef FGBA_EXTRACT_SWITCHES_AND_LIKE
+
 template<>
 constexpr auto arm_instruction::relative_offset<arm_instruction::set::tst>(
     immediate_operand im_op,
@@ -213,6 +272,23 @@ constexpr auto arm_instruction::relative_offset<arm_instruction::set::tst>(
 template<>
 inline constexpr std::size_t arm_instruction::max_relative_offset<arm_instruction::set::tst> =
     relative_offset<set::tst>(immediate_operand::on, shifts::null) + 1;
+
+#define FGBA_EXTRACT_SWITCHES_TST_LIKE(Instr)\
+template<>\
+struct arm_instruction::flag_bundle<arm_instruction::set::Instr> { using type = std::tuple<immediate_operand, shifts>; };\
+template<>\
+constexpr auto arm_instruction::switches<arm_instruction::set::Instr>() const noexcept\
+    -> arm_instruction::flag_bundle_t<arm_instruction::set::Instr> {\
+    auto relative = m_instruction_hash - base_offset<set::Instr>;\
+    auto immediate_operand_ret = static_cast<immediate_operand>(\
+        relative == detail::offset<shifts>\
+    );\
+    if (immediate_operand_ret == immediate_operand::on) {\
+        return {immediate_operand_ret, shifts::null};\
+    } else {\
+        return {immediate_operand_ret, static_cast<shifts>(relative)};\
+    }\
+}
 
 #define FGBA_SETUP_OFFSETS(instr)\
 template<>\
@@ -229,6 +305,11 @@ FGBA_SETUP_OFFSETS(cmp)
 FGBA_SETUP_OFFSETS(cmn)
 
 #undef FGBA_SETUP_OFFSETS
+
+FGBA_EXTRACT_SWITCHES_TST_LIKE(tst)
+FGBA_EXTRACT_SWITCHES_TST_LIKE(teq)
+FGBA_EXTRACT_SWITCHES_TST_LIKE(cmp)
+FGBA_EXTRACT_SWITCHES_TST_LIKE(cmn)
 
 template<>
 constexpr auto arm_instruction::relative_offset<arm_instruction::set::mrs>(which_psr which_psr)
@@ -258,7 +339,7 @@ constexpr auto arm_instruction::as_index() const noexcept
 
 static_assert(arm_instruction::construct<arm_instruction::set::orr>(immediate_operand::off, shifts::null, s_bit::off).as_index() == 29);
 
-constexpr auto arm_instruction::get_base() const noexcept 
+constexpr auto arm_instruction::base() const noexcept 
     -> set {
     return [instruction_hash = this->m_instruction_hash]<std::size_t... Is>(std::index_sequence<Is...>) {
         return static_cast<set>(
@@ -275,7 +356,7 @@ constexpr auto arm_instruction::get_base() const noexcept
         );
     }(std::make_index_sequence<static_cast<std::size_t>(set::count)>{});
 }
-static_assert(arm_instruction::construct<arm_instruction::set::orr>(immediate_operand::off, shifts::null, s_bit::off).get_base() ==
+static_assert(arm_instruction::construct<arm_instruction::set::orr>(immediate_operand::off, shifts::null, s_bit::off).base() ==
     arm_instruction::set::orr);
 } // namespace fgba::cpu
 

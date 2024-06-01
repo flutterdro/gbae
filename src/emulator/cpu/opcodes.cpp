@@ -2,9 +2,52 @@
 #include "emulator/cpu/instruction-impl/instruction-flags.hpp"
 #include "emulator/cpudefines.hpp"
 #include <array>
+#include <tuple>
 #include <utility>
 
 namespace fgba {
+
+namespace cpu {
+
+template<arm_instruction::set Instr>
+consteval auto test_extraction_and_uniqueness(auto... switches) 
+    -> bool {
+    return std::tuple{switches...} == arm_instruction::construct<Instr>(switches...).template switches<Instr>();
+}
+static_assert(test_extraction_and_uniqueness<arm_instruction::set::b>());
+static_assert(test_extraction_and_uniqueness<arm_instruction::set::bl>());
+static_assert(test_extraction_and_uniqueness<arm_instruction::set::bx>());
+static_assert(test_extraction_and_uniqueness<arm_instruction::set::and_>(
+    immediate_operand::off,
+    shifts::null,
+    s_bit::off
+));
+static_assert(test_extraction_and_uniqueness<arm_instruction::set::and_>(
+    immediate_operand::on,
+    shifts::null,
+    s_bit::off
+));
+static_assert(test_extraction_and_uniqueness<arm_instruction::set::and_>(
+    immediate_operand::off,
+    shifts::null,
+    s_bit::on
+));
+static_assert(test_extraction_and_uniqueness<arm_instruction::set::and_>(
+    immediate_operand::off,
+    shifts::null,
+    s_bit::off
+));
+static_assert(test_extraction_and_uniqueness<arm_instruction::set::and_>(
+    immediate_operand::off,
+    shifts::rsasr,
+    s_bit::off
+));
+static_assert(test_extraction_and_uniqueness<arm_instruction::set::and_>(
+    immediate_operand::off,
+    shifts::rsasr,
+    s_bit::on
+));
+}
 
 namespace {
 

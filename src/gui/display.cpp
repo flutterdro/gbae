@@ -1,8 +1,6 @@
 #include "gui/display.hpp"
 #include "emulator/cpudefines.hpp"
 #include "glad/gl.h"
-#include <__expected/expected.h>
-#include <__expected/unexpected.h>
 #include <expected>
 
 namespace fgba::gui {
