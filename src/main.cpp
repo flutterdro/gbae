@@ -29,7 +29,6 @@ auto main() -> int try {
             glfwTerminate();
         }
     };
-
     fgba::gameboy_advance gba;
     auto display = fgba::gui::display{gba.get_display_view()};
 

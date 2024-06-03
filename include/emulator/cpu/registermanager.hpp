@@ -104,6 +104,10 @@ public:
     }
     [[nodiscard]]constexpr auto pc() noexcept
         -> u32& { return m_register_bank[15]; }
+    [[nodiscard]]constexpr auto lr() noexcept
+        -> u32& { return (*this)[14]; }
+    [[nodiscard]]constexpr auto sp() noexcept
+        -> u32& { return (*this)[13]; }
     [[nodiscard]]constexpr auto cpsr() noexcept
         -> psr& { return m_cpsr; }
     [[nodiscard]]constexpr auto cpsr() const noexcept

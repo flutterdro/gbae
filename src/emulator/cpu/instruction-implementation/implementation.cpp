@@ -99,6 +99,10 @@ consteval auto bind_operation(impl_array& arr) -> void {
 }
 consteval auto init_arm_impl_ptrs() {
     impl_array ret{};
+
+    ret[arm_instruction::construct<arm_instruction::set::b>().as_index()] = instruction_executor::arm_b;
+    ret[arm_instruction::construct<arm_instruction::set::bl>().as_index()] = instruction_executor::arm_bl;
+    ret[arm_instruction::construct<arm_instruction::set::bx>().as_index()] = instruction_executor::arm_bx;
     cpu::bind_operation<eor_impl, arm_instruction::set::eor, ignore_dest::off>(ret);
     cpu::bind_operation<and_impl, arm_instruction::set::and_, ignore_dest::off>(ret);
     cpu::bind_operation<orr_impl, arm_instruction::set::orr, ignore_dest::off>(ret);

@@ -1,8 +1,10 @@
 #ifndef FGBA_DEFINES_HPP
 #define FGBA_DEFINES_HPP
+#include <bit>
 #include <mdspan>
 #include <cstring>
 #include <cstddef>
+#include <type_traits>
 #include "fgba-defines.hpp"
 //Utility header where helpers and aliases are defined
 
@@ -90,10 +92,12 @@ enum arm_instruction_set {
 }
 }
 
-template<typename T, unsigned B>
-auto signextend(T const x) -> T {
-    struct { T x:B; } s;
-    return s.x = x;
+template<unsigned B, std::integral T>
+constexpr auto signextend(T const x) noexcept -> T {
+    using resigned_t = std::make_signed_t<T>;
+    struct { resigned_t x:B; } s;
+    auto resigned = std::bit_cast<resigned_t>(x);
+    return static_cast<T>(s.x = resigned);
 }
 
 #endif

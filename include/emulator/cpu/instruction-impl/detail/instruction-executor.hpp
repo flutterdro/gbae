@@ -14,6 +14,10 @@ using single_operand_operation = auto(*)(u32) -> u32;
 using logical_operation        = auto(*)(u32, u32) -> u32;
 using arithmetic_operation     = auto(*)(u32, u32, u32*, u32) -> bool;
 struct instruction_executor {
+    static auto arm_b(arm7tdmi&, u32)
+        -> void;
+    static auto arm_bl(arm7tdmi&, u32)
+        -> void;
     static auto arm_bx(arm7tdmi& cpu, u32 instruction) 
         -> void; 
     template<immediate_operand I, s_bit S, shifts Shift, arithmetic_operation Operation>
@@ -54,8 +58,53 @@ struct instruction_executor {
 
 namespace fgba::cpu {
 
+inline auto instruction_executor::arm_b(arm7tdmi& cpu, u32 instruction)
+    -> void {
+    auto const offset = [&] -> u32 {
+        auto const packed_offset = instruction & 0xffffff_u32;
+        return static_cast<u32>(signextend<24>(packed_offset << 2_u32));
+    }();
+    
+    cpu.m_registers.pc() += offset;
+    cpu.flush_pipeline();
+    cpu.prefetch();
+    cpu.m_registers.pc() += 4_u32;
+    cpu.prefetch();
+}
+
+inline auto instruction_executor::arm_bl(arm7tdmi& cpu, u32 instruction)
+    -> void {
+    auto const offset = [&] -> u32 {
+        auto const packed_offset = instruction & 0xffffff_u32;
+        return signextend<24>(packed_offset << 2_u32);
+    }();
+    
+    cpu.m_registers.lr() = cpu.m_registers.pc() - 4_u32;
+    
+    cpu.m_registers.pc() += offset;
+    cpu.flush_pipeline();
+    cpu.prefetch();
+    cpu.m_registers.pc() += 4_u32;
+    cpu.prefetch();
+}
+
+inline auto instruction_executor::arm_bx(arm7tdmi& cpu, u32 instruction)
+    -> void {
+    auto const rn = instruction & 0xf_u32;
+    auto& regs = cpu.m_registers;
+    auto should_switch_to_thumb = (regs[rn] & 0b1_u32) == 1_u32;
+    regs.cpsr().use_thumb(should_switch_to_thumb); 
+    cpu.flush_pipeline();
+    regs.pc() = regs[rn];
+    cpu.prefetch();
+    cpu.increment_program_counter();
+    cpu.prefetch();
+}
+
+
+
 [[nodiscard]]constexpr auto check_overflow(u32 operand1, u32 operand2, u32 result) {
-    return ((operand1 >> 31l) == (operand2 >> 31u)) && ((operand1 >> 31u) != (result >> 31u));
+    return ((operand1 >> 31u) == (operand2 >> 31u)) && ((operand1 >> 31u) != (result >> 31u));
 }
 
 template<s_bit S>
