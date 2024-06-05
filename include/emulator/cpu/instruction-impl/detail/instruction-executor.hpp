@@ -2,10 +2,13 @@
 #define INSTRUCTION_EXECUTION_HPP_KCNFKJCN
 
 #include "emulator/cpu/instruction-impl/instruction-flags.hpp"
+#include "emulator/cpu/opcodes.hpp"
 #include "emulator/cpudefines.hpp"
 #include "emulator/cpu/arm7tdmi.hpp"
 #include "fgba-defines.hpp"
 #include "emulator/cpu/shifter.hpp"
+#include <bit>
+#include <utility>
 
 namespace fgba::cpu {
 
@@ -47,8 +50,11 @@ struct instruction_executor {
     template<which_psr P>
     static auto arm_move_from_psr(arm7tdmi&, u32 instruction)
         -> void;
-    template<indexing Ind>
+    template<immediate_operand Im, shifts Shift, direction Dir, indexing Ind, write_back Wb, data_size Data>
     static auto arm_data_store(arm7tdmi&, u32 instruction)
+        -> void;
+    template<immediate_operand Im, shifts Shift, direction Dir, indexing Ind, write_back Wb, data_size Data>
+    static auto arm_data_load(arm7tdmi&, u32 instruction)
         -> void;
     template<immediate_operand Im, shifts Shift, direction Dir, indexing Ind, write_back Wb, data_size Data>
     static auto arm_block_data_store(arm7tdmi&, u32 instruction)
@@ -280,26 +286,36 @@ auto instruction_executor::arm_move_to_psr(arm7tdmi& cpu, u32 instruction)
 
 }
 
+
+template<immediate_operand Im, shifts Shift, direction Dir, data_size Data>
+auto extract_offset(arm7tdmi& cpu, u32 instruction) 
+    -> u32 {
+    auto const absolute_offset = (
+        Im == immediate_operand::on ? (
+            Data == data_size::hword or Data == data_size::byte ? (
+                (instruction >> 4_u32 & 0xf_u32) | (instruction & 0xf_u32) 
+            ) : (
+                (instruction & 0xfff_u32)
+            )
+        ) : (
+            (cpu::i_have_no_clue_how_to_name_this<immediate_operand::off, s_bit::off, Shift>(cpu, instruction))
+        )
+    );
+    auto const adjusted_sign_offset = (
+        Dir == direction::up ? (
+            absolute_offset
+        ) : (
+           -absolute_offset
+        )
+    );
+    return adjusted_sign_offset;
+}
+
 template<immediate_operand Im, shifts Shift, direction Dir, indexing Ind, write_back Wb, data_size Data>
-static auto arm_data_store(arm7tdmi& cpu, u32 instruction) 
+auto instruction_executor::arm_data_store(arm7tdmi& cpu, u32 instruction) 
     -> void {
     auto& regs = cpu.m_registers;
-    auto const offset = [&] -> u32 {
-        auto const abs_offset = 
-            (Im == immediate_operand::on ? 
-                (Data == data_size::hword ?
-                    (instruction >> 4_u32 & 0xf_u32) | (instruction & 0xf_u32) :
-                    (instruction & 0xfff_u32)
-                ) :
-                (cpu::i_have_no_clue_how_to_name_this<immediate_operand::off, s_bit::off, Shift>(cpu, instruction))
-            );
-        auto const adjusted_sign_offset = 
-            Dir == direction::up ?
-                abs_offset :
-               -abs_offset;
-        return adjusted_sign_offset;
-    }();
-
+    auto const offset = cpu::extract_offset<Im, Shift, Dir, Data>(cpu, instruction);
     auto const data_to_load_on_bus = [&] -> u32 {
         auto const data_to_transfer = regs[instruction >> 12_u32 & 0xf_u32];
         if constexpr (Data == data_size::byte) {
@@ -324,6 +340,45 @@ static auto arm_data_store(arm7tdmi& cpu, u32 instruction)
         regs[r_b] += offset;
     }
 }
+
+consteval auto mask_for(data_size data_size) 
+    -> u32 {
+    switch (data_size) {
+        case data_size::byte:  return 0xff_u32;
+        case data_size::hword: return 0xffff_u32;
+        case data_size::word:  return 0xffffffff_u32;
+        default: std::unreachable();
+    }
+}
+template<data_size Data, mll_signedndesd Sign>
+auto process_data_from_bus(u32 data, address address) 
+    -> u32 {
+    auto const alignment      = address.value & 0b11_u32;
+    auto const realigned_data = std::rotr(data, alignment * 8_u32);
+    auto const masked_data    = realigned_data & mask_for(Data);
+
+    if (Sign == mll_signedndesd::signed_) {
+
+    }
+}
+
+template<immediate_operand Im, shifts Shift, direction Dir, indexing Ind, write_back Wb, data_size Data>
+auto instruction_executor::arm_data_load(arm7tdmi& cpu, u32 instruction)
+    -> void {
+    auto& regs = cpu.m_registers;
+    auto const offset = cpu::extract_offset<Im, Shift, Dir, Data>(cpu, instruction);
+    auto const r_base = instruction >> 16_u32 & 0xf_u32;
+
+    auto const source_address = [&] -> address {
+        return Ind == indexing::post ? regs[r_base] : regs[r_base] + offset;
+    }();
+
+    cpu.m_bus.access_read(source_address, Data);
+    auto data = cpu.m_bus.load_from();
+
+
+}
+
 
 
 }
