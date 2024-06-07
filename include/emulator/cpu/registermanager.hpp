@@ -5,7 +5,7 @@
 #include <cstddef>
 #include <cassert>
 
-#include "../cpudefines.hpp"
+#include "emulator/cpudefines.hpp"
 
 namespace fgba::cpu {
 
@@ -95,19 +95,27 @@ public:
         } 
     }
     [[nodiscard]]constexpr auto operator[](size_t const index) noexcept
-        -> u32& {
+        -> word& {
         return m_register_bank[m_active_registers_offset[index]];
     }
     [[nodiscard]]constexpr auto operator[](size_t const index) const noexcept
-        -> u32 const& {
+        -> word const& {
         return m_register_bank[m_active_registers_offset[index]];
     }
+    [[nodiscard]]constexpr auto operator[](word index) noexcept
+        -> word& {
+        return (*this)[index.value];
+    }
+    [[nodiscard]]constexpr auto operator[](word index) const noexcept
+        -> word const& {
+        return (*this)[index.value];
+    }
     [[nodiscard]]constexpr auto pc() noexcept
-        -> u32& { return m_register_bank[15]; }
+        -> word& { return m_register_bank[15]; }
     [[nodiscard]]constexpr auto lr() noexcept
-        -> u32& { return (*this)[14]; }
+        -> word& { return (*this)[14]; }
     [[nodiscard]]constexpr auto sp() noexcept
-        -> u32& { return (*this)[13]; }
+        -> word& { return (*this)[13]; }
     [[nodiscard]]constexpr auto cpsr() noexcept
         -> psr& { return m_cpsr; }
     [[nodiscard]]constexpr auto cpsr() const noexcept
@@ -118,7 +126,7 @@ public:
         -> psr const& { return m_spsr[m_spsr_index]; }
 private:
     psr m_cpsr; 
-    std::array<u32, 31> m_register_bank;
+    std::array<word, 31> m_register_bank;
     std::array<psr, 5> m_spsr;
     std::array<unsigned, 16> m_active_registers_offset;
     unsigned m_spsr_index;

@@ -1,11 +1,13 @@
 #ifndef FGBA_FUNKY_INTS_HPP_ADJNPLDNC
 #define FGBA_FUNKY_INTS_HPP_ADJNPLDNC
 
+#include "fmt/base.h"
 #include <bit>
 #include <climits>
 #include <concepts>
 #include <cstdint>
 #include <type_traits>
+#include <fmt/format.h>
 namespace fgba {
 
 using bit = bool;
@@ -16,10 +18,10 @@ struct basic_bitset {
         unsigned      bit_index;
         basic_bitset& base;
 
-        constexpr auto operator=(bit value) noexcept
+        constexpr auto operator=(bit bit) noexcept
             -> bit_reference& { 
             base.value &= ~(static_cast<BaseInt>(1) << bit_index); 
-            base.value |= static_cast<BaseInt>(value) << bit_index;
+            base.value |= static_cast<BaseInt>(bit) << bit_index;
             return *this;
         }
         constexpr operator bit() noexcept { 
@@ -33,13 +35,16 @@ struct basic_bitset {
 
         constexpr auto operator=(basic_bitset chunk) noexcept
             -> bit_chunk_reference& { 
-            chunk.value &= ~basic_bitset::create_mask(bit_chunk_end - bit_chunk_begin, 0);
+            chunk.value &= basic_bitset::create_mask(bit_chunk_end - bit_chunk_begin, 0);
             base.value  &= ~basic_bitset::create_mask(bit_chunk_end, bit_chunk_begin);
             base.value  |= chunk.lsl(bit_chunk_begin).value;
 
             return *this;
         }
-
+        constexpr auto operator=(bit_chunk_reference& chunk) noexcept
+            -> bit_chunk_reference& {
+            return this->operator=(static_cast<basic_bitset>(chunk)); //NOLINT
+        }
         constexpr operator basic_bitset() noexcept {
             return base.lsr(bit_chunk_begin);
         }
@@ -101,7 +106,12 @@ struct basic_bitset {
         struct {
             base_int_but_signed_t castrated_value : FromBit + 1;
         } extender;
-        return { extender.castrated_value = value }; 
+        
+        return { 
+            std::bit_cast<BaseInt>(
+                static_cast<base_int_but_signed_t>(extender.castrated_value = std::bit_cast<base_int_but_signed_t>(value)) 
+            )
+        }; 
     }
     [[nodiscard]]constexpr auto byte_swap() const noexcept
         -> basic_bitset { return {std::byteswap(value)}; }
@@ -115,34 +125,40 @@ struct basic_bitset {
         -> basic_bitset { return {value + other.value}; }
     [[nodiscard]]constexpr auto operator-(basic_bitset other) const noexcept
         -> basic_bitset { return {value - other.value}; }
+    [[nodiscard]]constexpr auto operator*(basic_bitset other) const noexcept
+        -> basic_bitset { return {value * other.value}; }
 
-    [[nodiscard]]constexpr auto operator|=(basic_bitset other) noexcept
+    constexpr auto operator|=(basic_bitset other) noexcept
         -> basic_bitset& { value |= other.value; return *this; }
-    [[nodiscard]]constexpr auto operator&=(basic_bitset other) noexcept
+    constexpr auto operator&=(basic_bitset other) noexcept
         -> basic_bitset& { value &= other.value; return *this; }
-    [[nodiscard]]constexpr auto operator^=(basic_bitset other) noexcept
+    constexpr auto operator^=(basic_bitset other) noexcept
         -> basic_bitset& { value ^= other.value; return *this; }
-    [[nodiscard]]constexpr auto operator-=(basic_bitset other) noexcept
+    constexpr auto operator-=(basic_bitset other) noexcept
         -> basic_bitset& { value -= other.value; return *this; }
-    [[nodiscard]]constexpr auto operator+=(basic_bitset other) noexcept
+    constexpr auto operator+=(basic_bitset other) noexcept
         -> basic_bitset& { value += other.value; return *this; }
     
     [[nodiscard]]constexpr auto operator~() const noexcept
         -> basic_bitset { return {~value}; }
     [[nodiscard]]constexpr auto operator-() const noexcept
         -> basic_bitset { return {-value}; }
+
+    [[nodiscard]]constexpr auto operator<=>(basic_bitset const&) const noexcept = default;
+    template<typename OtherBaseInt>
+    explicit constexpr operator basic_bitset<OtherBaseInt>() const noexcept {
+        return {static_cast<OtherBaseInt>(value)}; 
+    }
     template<typename T>
     [[nodiscard]]constexpr auto as() const noexcept
         -> T { return static_cast<T>(*this); }
     template<typename T>
     [[nodiscard]]constexpr auto as_exact() const noexcept
         -> T { return std::bit_cast<T>(*this); }
-    template<typename OtherBaseInt>
-    explicit constexpr operator basic_bitset<OtherBaseInt>() {
-        return {static_cast<OtherBaseInt>(value)}; 
-    }
+    
+    
     [[nodiscard]]static constexpr auto create_mask(unsigned end_bit, unsigned begin_bit)
-        -> BaseInt { return (~static_cast<BaseInt>(0) >> (sizeof(BaseInt) * CHAR_BIT - end_bit)) << begin_bit; }
+        -> BaseInt { return (~static_cast<BaseInt>(0) >> (sizeof(BaseInt) * CHAR_BIT - end_bit - 1)) << begin_bit; }
     BaseInt value;
 };
 
@@ -153,7 +169,26 @@ using funky = basic_bitset<T>;
 consteval auto operator""_bit(unsigned long long num) 
     -> bit { return static_cast<bit>(num); }
 
+
+
 } // namespace fgba
 
+consteval auto test1() {
+    using t = fgba::funky<std::uint32_t>;
+    t tes{0};
+    tes[3] = 1;
+    tes[4] = 1;
+    tes[7, 4] = t{0b1110};
+    return tes.value;
+}
+
+static_assert(test1());
+
+template<typename T>
+struct fmt::formatter<fgba::funky<T>> : fmt::formatter<T> {
+    constexpr auto format(fgba::funky<T> value, fmt::format_context& ctx) const {
+        return fmt::formatter<T>::format(value.value, ctx);
+    }
+};
 
 #endif

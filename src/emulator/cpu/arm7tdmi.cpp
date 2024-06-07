@@ -12,9 +12,9 @@ auto arm7tdmi::advance_execution() -> void {
     if (m_registers.cpsr().is_thumb()) {
         //TODO: implement thumb
     } else {
-        auto current_instruction = m_prefetch_buffer.read<u32>();
+        auto current_instruction = m_prefetch_buffer.read<word>();
         prefetch();
-        auto decoded = cpu::decode_arm(current_instruction);
+        auto decoded = cpu::decode_arm(current_instruction.value);
         cpu::execute_arm(*this, decoded, current_instruction);
     }
     increment_program_counter();
@@ -24,7 +24,7 @@ auto arm7tdmi::prefetch() -> void {
     if (m_registers.cpsr().is_thumb()) {
         //TODO: implement thumb
     } else {
-        m_bus.access_read(address{m_registers.pc()}, data_size::word);
+        m_bus.access_read(address{m_registers.pc().value}, data_size::word);
         auto bus_contents = m_bus.load_from();
         m_prefetch_buffer.write<u32>(bus_contents);
     }
@@ -36,19 +36,19 @@ auto arm7tdmi::flush_pipeline() -> void {
 
 auto arm7tdmi::increment_program_counter() -> void {
     if (m_registers.cpsr().is_thumb()) {
-        m_registers.pc() += 2_u32;
+        m_registers.pc() += 2_word;
     } else {
-        m_registers.pc() += 4_u32;
+        m_registers.pc() += 4_word;
     }
 }
 auto arm7tdmi::refill_pipeline() -> void {
     if (m_registers.cpsr().is_thumb()) {
         prefetch();
-        m_registers.pc() += 2;
+        m_registers.pc() += 2_word;
         prefetch();
     } else {
         prefetch();
-        m_registers.pc() += 4;
+        m_registers.pc() += 4_word;
         prefetch();
     }
 }

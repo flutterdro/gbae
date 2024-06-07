@@ -11,15 +11,15 @@ namespace fgba::cpu {
 
 namespace  {
 
-[[nodiscard]]constexpr auto bic_impl(u32 operand1, u32 operand2) noexcept { return operand1 & (~operand2); }
-[[nodiscard]]constexpr auto and_impl(u32 operand1, u32 operand2) noexcept { return operand1 & operand2; }
-[[nodiscard]]constexpr auto eor_impl(u32 operand1, u32 operand2) noexcept { return operand1 ^ operand2; }
-[[nodiscard]]constexpr auto orr_impl(u32 operand1, u32 operand2) noexcept { return operand1 | operand2; }
-[[nodiscard]]constexpr auto mvn_impl(u32 operand1)               noexcept { return ~operand1; }
-[[nodiscard]]constexpr auto mov_impl(u32 operand1)               noexcept { return operand1; }
+[[nodiscard]]constexpr auto bic_impl(word operand1, word operand2) noexcept { return operand1 & (~operand2); }
+[[nodiscard]]constexpr auto and_impl(word operand1, word operand2) noexcept { return operand1 & operand2; }
+[[nodiscard]]constexpr auto eor_impl(word operand1, word operand2) noexcept { return operand1 ^ operand2; }
+[[nodiscard]]constexpr auto orr_impl(word operand1, word operand2) noexcept { return operand1 | operand2; }
+[[nodiscard]]constexpr auto mvn_impl(word operand1)                noexcept { return ~operand1; }
+[[nodiscard]]constexpr auto mov_impl(word operand1)                noexcept { return operand1; }
 
 
-using impl_ptr = auto (*)(arm7tdmi&, u32) -> void;
+using impl_ptr = auto (*)(arm7tdmi&, word) -> void;
 using impl_array = std::array<impl_ptr, arm_instruction::count()>;
 
 enum class ignore_dest {
@@ -28,7 +28,7 @@ enum class ignore_dest {
 };
 
 template<arithmetic_operation Op, immediate_operand O, ignore_dest Id, s_bit S, shifts Shift>
-auto arm_overload(arm7tdmi& cpu, u32 instr) -> void { 
+auto arm_overload(arm7tdmi& cpu, word instr) -> void { 
     if constexpr (Id == ignore_dest::off) {
         instruction_executor::arm_arithmetic<O, S, Shift, Op>(cpu, instr);
     } else {
@@ -36,7 +36,7 @@ auto arm_overload(arm7tdmi& cpu, u32 instr) -> void {
     }
 }
 template<logical_operation Op, immediate_operand O, ignore_dest Id, s_bit S, shifts Shift>
-auto arm_overload(arm7tdmi& cpu, u32 instr) -> void { 
+auto arm_overload(arm7tdmi& cpu, word instr) -> void { 
     if constexpr (Id == ignore_dest::off) {
         instruction_executor::arm_logical<O, S, Shift, Op>(cpu, instr);
     } else {
@@ -44,7 +44,7 @@ auto arm_overload(arm7tdmi& cpu, u32 instr) -> void {
     }
 }
 template<single_operand_operation Op, immediate_operand O, ignore_dest Id, s_bit S, shifts Shift>
-auto arm_overload(arm7tdmi& cpu, u32 instr) -> void { 
+auto arm_overload(arm7tdmi& cpu, word instr) -> void { 
     instruction_executor::arm_single_operand<O, S, Shift, Op>(cpu, instr);
 }
 
@@ -127,6 +127,6 @@ inline constexpr impl_array arm_impl_ptrs = init_arm_impl_ptrs();
 
 }
 //NOLINTEND
-auto fgba::cpu::execute_arm(arm7tdmi& cpu, arm_instruction instruction, u32 opcode) -> void {
+auto fgba::cpu::execute_arm(arm7tdmi& cpu, arm_instruction instruction, word opcode) -> void {
     std::invoke(arm_impl_ptrs[instruction.as_index()], cpu, opcode);
 }

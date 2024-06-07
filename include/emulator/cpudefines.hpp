@@ -6,9 +6,16 @@
 #include <cstddef>
 #include <type_traits>
 #include "fgba-defines.hpp"
+#include "utility/funky-ints.hpp"
 //Utility header where helpers and aliases are defined
 
 namespace fgba {
+using word = funky<u32>;
+consteval auto operator""_word(unsigned long long num)
+    -> word { return word{.value = static_cast<u32>(num)}; }
+using dword = funky<u64>;
+consteval auto operator""_dword(unsigned long long num)
+    -> dword { return dword{.value = static_cast<u64>(num)}; }
 template<typename T>
 struct half_width;
 template<>

@@ -53,8 +53,8 @@ namespace {
 
 using enum cpu::arm_instruction::set;
 struct arm_instruction_info {
-    u32 mask;
-    u32 opcode;
+    word mask;
+    word opcode;
 };
 using arm_lut = std::array<arm_instruction_info, cpu::arm_instruction::count()>;
 
@@ -69,45 +69,45 @@ consteval auto asign_arm_branch_opcodes(arm_lut& lut)
 consteval auto asign_arm_data_processing(arm_lut& lut)
     -> void;
 template<cpu::arm_instruction::set>
-consteval auto arm_create_and_like(arm_lut&, arm_instruction_info, u32 id)
+consteval auto arm_create_and_like(arm_lut&, arm_instruction_info, word id)
     -> void;
 template<cpu::arm_instruction::set>
-consteval auto arm_create_tst_like(arm_lut&, arm_instruction_info, u32 id)
+consteval auto arm_create_tst_like(arm_lut&, arm_instruction_info, word id)
     -> void;
 template<cpu::arm_instruction::set>
 consteval auto arm_create_s_bit_variation(arm_lut&, arm_instruction_info, cpu::s_bit)
     -> void;
 template<cpu::arm_instruction::set>
-consteval auto arm_create_special_shift_variation(arm_lut&, arm_instruction_info, cpu::s_bit, cpu::shifts, u32 id)
+consteval auto arm_create_special_shift_variation(arm_lut&, arm_instruction_info, cpu::s_bit, cpu::shifts, word id)
     -> void;
 template<cpu::arm_instruction::set>
-consteval auto arm_create_register_shift_variation(arm_lut&, arm_instruction_info, cpu::s_bit, cpu::shifts, u32 id)
+consteval auto arm_create_register_shift_variation(arm_lut&, arm_instruction_info, cpu::s_bit, cpu::shifts, word id)
     -> void;
 template<cpu::arm_instruction::set>
-consteval auto arm_create_normal_shift_variation(arm_lut&, arm_instruction_info, cpu::s_bit, cpu::shifts, u32 id)
+consteval auto arm_create_normal_shift_variation(arm_lut&, arm_instruction_info, cpu::s_bit, cpu::shifts, word id)
     -> void;
 } // namespace qual
 
 consteval auto qual::asign_arm_branch_opcodes(arm_lut& lut)
     -> void {
     lut[cpu::arm_instruction::construct<b>().as_index()] = {
-        .mask   = 0b0000'1111'0000'0000'0000'0000'0000'0000_u32,
-        .opcode = 0b0000'1010'0000'0000'0000'0000'0000'0000_u32,
+        .mask   = 0b0000'1111'0000'0000'0000'0000'0000'0000_word,
+        .opcode = 0b0000'1010'0000'0000'0000'0000'0000'0000_word,
     };
     lut[cpu::arm_instruction::construct<bl>().as_index()] = {
-        .mask   = 0b0000'1111'0000'0000'0000'0000'0000'0000_u32,
-        .opcode = 0b0000'1011'0000'0000'0000'0000'0000'0000_u32,
+        .mask   = 0b0000'1111'0000'0000'0000'0000'0000'0000_word,
+        .opcode = 0b0000'1011'0000'0000'0000'0000'0000'0000_word,
     };
     lut[cpu::arm_instruction::construct<bx>().as_index()] = {
-        .mask   = 0b0000'1111'1111'1111'1111'1111'1111'0000_u32,
-        .opcode = 0b0000'0001'0010'1111'1111'1111'0001'0000_u32,
+        .mask   = 0b0000'1111'1111'1111'1111'1111'1111'0000_word,
+        .opcode = 0b0000'0001'0010'1111'1111'1111'0001'0000_word,
     };
 }
 template<cpu::arm_instruction::set InstructionBase>
-consteval auto qual::arm_create_special_shift_variation(arm_lut& lut, arm_instruction_info base, cpu::s_bit s, cpu::shifts shift, u32 id)
+consteval auto qual::arm_create_special_shift_variation(arm_lut& lut, arm_instruction_info base, cpu::s_bit s, cpu::shifts shift, word const id)
     -> void {
-    base.mask   |= 0b1111'1111_u32 << 4_u32;
-    base.opcode |= id << 5_u32;
+    base.mask[11, 4]    = 0b1111'1111_word;
+    base.opcode[6, 5]   = id;
     if constexpr (std::to_underlying(InstructionBase) < std::to_underlying(tst)) {
         lut[cpu::arm_instruction::construct<InstructionBase>(cpu::immediate_operand::off, shift, s).as_index()] = base;
     } else {
@@ -115,11 +115,11 @@ consteval auto qual::arm_create_special_shift_variation(arm_lut& lut, arm_instru
     }
 }
 template<cpu::arm_instruction::set InstructionBase>
-consteval auto qual::arm_create_register_shift_variation(arm_lut& lut, arm_instruction_info base, cpu::s_bit s, cpu::shifts shift, u32 id)
+consteval auto qual::arm_create_register_shift_variation(arm_lut& lut, arm_instruction_info base, cpu::s_bit s, cpu::shifts shift, word const id)
     -> void {
-    base.mask   |= 0b1111_u32 << 4_u32;
-    base.opcode |= id << 5_u32;
-    base.opcode |= 1_u32 << 4_u32;
+    base.mask[7, 4]   = 0b1111_word;
+    base.opcode[6, 5] = id;
+    base.opcode[4]    = 1_bit;
     if constexpr (std::to_underlying(InstructionBase) < std::to_underlying(tst)) {
         lut[cpu::arm_instruction::construct<InstructionBase>(cpu::immediate_operand::off, shift, s).as_index()] = base;
     } else {
@@ -127,10 +127,10 @@ consteval auto qual::arm_create_register_shift_variation(arm_lut& lut, arm_instr
     }
 }
 template<cpu::arm_instruction::set InstructionBase>
-consteval auto qual::arm_create_normal_shift_variation(arm_lut& lut, arm_instruction_info base, cpu::s_bit s, cpu::shifts shift, u32 id)
+consteval auto qual::arm_create_normal_shift_variation(arm_lut& lut, arm_instruction_info base, cpu::s_bit s, cpu::shifts shift, word const id)
     -> void {
-    base.mask   |= 0b111_u32 << 4_u32;
-    base.opcode |= id << 5_u32;
+    base.mask[6, 4]   = 0b111_word;
+    base.opcode[6, 5] = id;
     if constexpr (std::to_underlying(InstructionBase) < std::to_underlying(tst)) {
         lut[cpu::arm_instruction::construct<InstructionBase>(cpu::immediate_operand::off, shift, s).as_index()] = base;
     } else {
@@ -140,21 +140,20 @@ consteval auto qual::arm_create_normal_shift_variation(arm_lut& lut, arm_instruc
 template<cpu::arm_instruction::set InstructionBase>
 consteval auto qual::arm_create_s_bit_variation(arm_lut& lut, arm_instruction_info base, cpu::s_bit s)
     -> void {
-    auto s_bit = u32{s == cpu::s_bit::on};
-    base.opcode |= s_bit << 20_u32;
-    qual::arm_create_special_shift_variation <InstructionBase>(lut, base, s, cpu::shifts::null,  0b00_u32);
-    qual::arm_create_special_shift_variation <InstructionBase>(lut, base, s, cpu::shifts::lsr32, 0b01_u32);
-    qual::arm_create_special_shift_variation <InstructionBase>(lut, base, s, cpu::shifts::asr32, 0b10_u32);
-    qual::arm_create_special_shift_variation <InstructionBase>(lut, base, s, cpu::shifts::rrx,   0b11_u32);
-    qual::arm_create_register_shift_variation<InstructionBase>(lut, base, s, cpu::shifts::rslsl, 0b00_u32);
-    qual::arm_create_register_shift_variation<InstructionBase>(lut, base, s, cpu::shifts::rslsr, 0b01_u32);
-    qual::arm_create_register_shift_variation<InstructionBase>(lut, base, s, cpu::shifts::rsasr, 0b10_u32);
-    qual::arm_create_register_shift_variation<InstructionBase>(lut, base, s, cpu::shifts::rsror, 0b11_u32);
-    qual::arm_create_normal_shift_variation  <InstructionBase>(lut, base, s, cpu::shifts::lsl,   0b00_u32);
-    qual::arm_create_normal_shift_variation  <InstructionBase>(lut, base, s, cpu::shifts::lsr,   0b01_u32);
-    qual::arm_create_normal_shift_variation  <InstructionBase>(lut, base, s, cpu::shifts::asr,   0b10_u32);
-    qual::arm_create_normal_shift_variation  <InstructionBase>(lut, base, s, cpu::shifts::ror,   0b11_u32);
-    base.opcode |= 1_u32 << 25_u32;
+    base.opcode[20] = s == cpu::s_bit::on ? 1_bit : 0_bit;
+    qual::arm_create_special_shift_variation <InstructionBase>(lut, base, s, cpu::shifts::null,  0b00_word);
+    qual::arm_create_special_shift_variation <InstructionBase>(lut, base, s, cpu::shifts::lsr32, 0b01_word);
+    qual::arm_create_special_shift_variation <InstructionBase>(lut, base, s, cpu::shifts::asr32, 0b10_word);
+    qual::arm_create_special_shift_variation <InstructionBase>(lut, base, s, cpu::shifts::rrx,   0b11_word);
+    qual::arm_create_register_shift_variation<InstructionBase>(lut, base, s, cpu::shifts::rslsl, 0b00_word);
+    qual::arm_create_register_shift_variation<InstructionBase>(lut, base, s, cpu::shifts::rslsr, 0b01_word);
+    qual::arm_create_register_shift_variation<InstructionBase>(lut, base, s, cpu::shifts::rsasr, 0b10_word);
+    qual::arm_create_register_shift_variation<InstructionBase>(lut, base, s, cpu::shifts::rsror, 0b11_word);
+    qual::arm_create_normal_shift_variation  <InstructionBase>(lut, base, s, cpu::shifts::lsl,   0b00_word);
+    qual::arm_create_normal_shift_variation  <InstructionBase>(lut, base, s, cpu::shifts::lsr,   0b01_word);
+    qual::arm_create_normal_shift_variation  <InstructionBase>(lut, base, s, cpu::shifts::asr,   0b10_word);
+    qual::arm_create_normal_shift_variation  <InstructionBase>(lut, base, s, cpu::shifts::ror,   0b11_word);
+    base.opcode[25] = 1_bit;
     if constexpr (std::to_underlying(InstructionBase) < std::to_underlying(tst)) {
         lut[cpu::arm_instruction::construct<InstructionBase>(cpu::immediate_operand::on, cpu::shifts::null, s).as_index()] = base;
     } else {
@@ -162,41 +161,41 @@ consteval auto qual::arm_create_s_bit_variation(arm_lut& lut, arm_instruction_in
     }
 }
 template<cpu::arm_instruction::set InstructionBase>
-consteval auto qual::arm_create_and_like(arm_lut& lut, arm_instruction_info base, u32 id)
+consteval auto qual::arm_create_and_like(arm_lut& lut, arm_instruction_info base, word const id)
     -> void {
-    base.opcode |= id << 21_u32;
+    base.opcode[24, 21] = id;
     arm_create_s_bit_variation<InstructionBase>(lut, base, cpu::s_bit::on);
     arm_create_s_bit_variation<InstructionBase>(lut, base, cpu::s_bit::off);
 }
 template<cpu::arm_instruction::set InstructionBase>
-consteval auto qual::arm_create_tst_like(arm_lut& lut, arm_instruction_info base, u32 id)
+consteval auto qual::arm_create_tst_like(arm_lut& lut, arm_instruction_info base, word const id)
     -> void {
-    base.opcode |= id << 21_u32;
+    base.opcode[24, 21] = id;
     arm_create_s_bit_variation<InstructionBase>(lut, base, cpu::s_bit::on);
 }
 
 consteval auto qual::asign_arm_data_processing(arm_lut &lut)
     -> void {
     auto base = arm_instruction_info{
-        .mask   = 0b0000'1111'1111'0000'0000'0000'0000'0000_u32,
-        .opcode = 0b0000'0000'0000'0000'0000'0000'0000'0000_u32,
+        .mask   = 0b0000'1111'1111'0000'0000'0000'0000'0000_word,
+        .opcode = 0b0000'0000'0000'0000'0000'0000'0000'0000_word,
     };
-    qual::arm_create_and_like<and_>(lut, base, 0b0000);
-    qual::arm_create_and_like<eor> (lut, base, 0b0001);
-    qual::arm_create_and_like<sub> (lut, base, 0b0010);
-    qual::arm_create_and_like<rsb> (lut, base, 0b0011);
-    qual::arm_create_and_like<add> (lut, base, 0b0100);
-    qual::arm_create_and_like<adc> (lut, base, 0b0101);
-    qual::arm_create_and_like<sbc> (lut, base, 0b0110);
-    qual::arm_create_and_like<rsc> (lut, base, 0b0111);
-    qual::arm_create_tst_like<tst> (lut, base, 0b1000);
-    qual::arm_create_tst_like<teq> (lut, base, 0b1001);
-    qual::arm_create_tst_like<cmp> (lut, base, 0b1010);
-    qual::arm_create_tst_like<cmn> (lut, base, 0b1011);
-    qual::arm_create_and_like<orr> (lut, base, 0b1100);
-    qual::arm_create_and_like<mov> (lut, base, 0b1101);
-    qual::arm_create_and_like<bic> (lut, base, 0b1110);
-    qual::arm_create_and_like<mvn> (lut, base, 0b1111);
+    qual::arm_create_and_like<and_>(lut, base, 0b0000_word);
+    qual::arm_create_and_like<eor> (lut, base, 0b0001_word);
+    qual::arm_create_and_like<sub> (lut, base, 0b0010_word);
+    qual::arm_create_and_like<rsb> (lut, base, 0b0011_word);
+    qual::arm_create_and_like<add> (lut, base, 0b0100_word);
+    qual::arm_create_and_like<adc> (lut, base, 0b0101_word);
+    qual::arm_create_and_like<sbc> (lut, base, 0b0110_word);
+    qual::arm_create_and_like<rsc> (lut, base, 0b0111_word);
+    qual::arm_create_tst_like<tst> (lut, base, 0b1000_word);
+    qual::arm_create_tst_like<teq> (lut, base, 0b1001_word);
+    qual::arm_create_tst_like<cmp> (lut, base, 0b1010_word);
+    qual::arm_create_tst_like<cmn> (lut, base, 0b1011_word);
+    qual::arm_create_and_like<orr> (lut, base, 0b1100_word);
+    qual::arm_create_and_like<mov> (lut, base, 0b1101_word);
+    qual::arm_create_and_like<bic> (lut, base, 0b1110_word);
+    qual::arm_create_and_like<mvn> (lut, base, 0b1111_word);
 }
 
 
@@ -216,12 +215,22 @@ inline constexpr auto arm_instruction_info_lut = qual::generate_arm_opcode_lut()
 } // namespace 
 
 
+static_assert(arm_instruction_info_lut[223].mask.value
+);
+static_assert(arm_instruction_info_lut[223].opcode.value
+);
+static_assert(arm_instruction_info_lut[
+    cpu::arm_instruction::construct<tst>(
+        cpu::immediate_operand::off, 
+        cpu::shifts::lsl).as_index()
+    ].mask.value
+);
 
-auto cpu::decode_arm(u32 instruction) noexcept -> cpu::arm_instruction {
+auto cpu::decode_arm(u32 const instruction) noexcept -> cpu::arm_instruction {
     std::size_t index = 0;
     for(; index < arm_instruction_info_lut.size(); ++index) {
         auto const [mask, opcode] = arm_instruction_info_lut[index];
-        if ((instruction & mask) == opcode) break;
+        if ((word{instruction} & mask) == opcode) break;
     }
     return cpu::arm_instruction{index};
 }

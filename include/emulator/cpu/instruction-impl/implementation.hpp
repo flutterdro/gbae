@@ -4,7 +4,7 @@
 #include "emulator/cpu/opcodes.hpp"
 
 namespace fgba::cpu {
-auto execute_arm(arm7tdmi&, arm_instruction, u32) -> void;
+auto execute_arm(arm7tdmi&, arm_instruction, word) -> void;
 } // namespace fgba::cpu
 
 #endif
