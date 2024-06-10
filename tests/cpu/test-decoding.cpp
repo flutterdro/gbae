@@ -337,3 +337,75 @@ TEMPLATE_TEST_CASE_SIG("Decoding arm tst-like data processing", "[cpu][decoding]
     }
 
 }
+
+TEST_CASE("Decoding arm msr", "[cpu][decoding][arm]") {
+    auto const skeleton = 0b0100'00'0'10'0'10100'0'1111'00000000'1011_word;
+    auto const spsr     = 0b0000'00'0'00'1'00000'0'0000'00000000'0000_word;
+    auto const imop     = 0b0000'00'1'00'0'00000'0'0000'00000000'0000_word;
+    auto const whole    = 0b0000'00'0'00'0'00000'1'0000'00000000'0000_word;
+    SECTION("whole psr transfer") {
+        auto const cpsr_result   = cpu::decode_arm((skeleton | whole).value);
+        auto const cpsr_expected = cpu::arm_instruction::construct<msr>(
+            cpu::immediate_operand::off,
+            cpu::mask::off,
+            cpu::which_psr::cpsr
+        );
+        auto const spsr_result   = cpu::decode_arm((skeleton | whole | spsr).value);
+        auto const spsr_expected = cpu::arm_instruction::construct<msr>(
+            cpu::immediate_operand::off,
+            cpu::mask::off,
+            cpu::which_psr::spsr
+        );
+
+        CHECK(cpsr_result.as_index() == cpsr_expected.as_index());
+        CHECK(spsr_result.as_index() == spsr_expected.as_index());
+    }
+    SECTION("flag bits only") {
+        SECTION("immediate_operand") {
+            auto const imop_result   = cpu::decode_arm((skeleton | imop).value);
+            auto const imop_expected = cpu::arm_instruction::construct<msr>(
+                cpu::immediate_operand::on,
+                cpu::mask::on,
+                cpu::which_psr::cpsr
+            );
+            auto const noimop_result   = cpu::decode_arm((skeleton).value);
+            auto const noimop_expected = cpu::arm_instruction::construct<msr>(
+                cpu::immediate_operand::off,
+                cpu::mask::on,
+                cpu::which_psr::cpsr
+            );
+        }
+        SECTION("cpsr and spsr") {
+            auto const cpsr_result   = cpu::decode_arm((skeleton).value);
+            auto const cpsr_expected = cpu::arm_instruction::construct<msr>(
+                cpu::immediate_operand::off,
+                cpu::mask::on,
+                cpu::which_psr::cpsr
+            );
+            auto const spsr_result   = cpu::decode_arm((skeleton | spsr).value);
+            auto const spsr_expected = cpu::arm_instruction::construct<msr>(
+                cpu::immediate_operand::off,
+                cpu::mask::on,
+                cpu::which_psr::spsr
+            );
+            CHECK(cpsr_result.as_index() == cpsr_expected.as_index());
+            CHECK(spsr_result.as_index() == spsr_expected.as_index());
+        }
+    }
+}
+
+TEST_CASE("Decoding arm mrs", "[cpu][decoding][arm]") {
+    auto const skeleton  = 0b0100'00010'0'001111'0101'0000'0000'0000_u32;
+    auto const spsr      = 0b0000'00000'1'000000'0000'0000'0000'0000_u32;
+    auto instruction     = 0_u32;
+    SECTION("cpsr transfer") {
+        auto const result   = cpu::decode_arm(skeleton);
+        auto const expected = cpu::arm_instruction::construct<mrs>(cpu::which_psr::cpsr);
+
+        CHECK(result.as_index() == expected.as_index());
+    }
+    SECTION("spsr transfer") {
+        auto const result   = cpu::decode_arm(skeleton | spsr);
+        auto const expected = cpu::arm_instruction::construct<mrs>(cpu::which_psr::spsr);
+    }
+}

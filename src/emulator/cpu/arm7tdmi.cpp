@@ -26,7 +26,7 @@ auto arm7tdmi::prefetch() -> void {
     } else {
         m_bus.access_read(address{m_registers.pc().value}, data_size::word);
         auto bus_contents = m_bus.load_from();
-        m_prefetch_buffer.write<u32>(bus_contents);
+        m_prefetch_buffer.write<word>(bus_contents);
     }
 }
 

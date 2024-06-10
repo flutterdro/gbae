@@ -53,7 +53,7 @@ struct instruction_executor {
     template<immediate_operand Im, shifts Shift, direction Dir, indexing Ind, write_back Wb, data_size Data>
     static auto arm_data_store(arm7tdmi&, word instruction)
         -> void;
-    template<immediate_operand Im, shifts Shift, direction Dir, indexing Ind, write_back Wb, data_size Data>
+    template<immediate_operand Im, shifts Shift, direction Dir, indexing Ind, write_back Wb, data_size Data, mll_signedndesd>
     static auto arm_data_load(arm7tdmi&, word instruction)
         -> void;
     template<immediate_operand Im, shifts Shift, direction Dir, indexing Ind, write_back Wb, data_size Data>
@@ -345,41 +345,43 @@ auto instruction_executor::arm_data_store(arm7tdmi& cpu, word const instruction)
     }
 }
 
-consteval auto mask_for(data_size data_size) 
+consteval auto upper_bound(data_size data_size) 
     -> u32 {
     switch (data_size) {
-        case data_size::byte:  return 0xff_u32;
-        case data_size::hword: return 0xffff_u32;
-        case data_size::word:  return 0xffffffff_u32;
+        case data_size::byte:  return 7;
+        case data_size::hword: return 15;
+        case data_size::word:  return 31;
         default: std::unreachable();
     }
 }
 template<data_size Data, mll_signedndesd Sign>
-auto process_data_from_bus(u32 data, address address) 
-    -> u32 {
-    auto const alignment      = address.value & 0b11_u32;
-    auto const realigned_data = std::rotr(data, alignment * 8_u32);
-    auto const masked_data    = realigned_data & mask_for(Data);
+auto process_data_from_bus(word const data, address const address)
+    -> word {
+    word result;
 
+    auto const alignment = address[1, 0].value;
+    result = data.ror(alignment * 8).mask_in(upper_bound(Data), 0);
     if (Sign == mll_signedndesd::signed_) {
-
+        static constexpr std::array significant_bits{31u, 7u, 15u, 7u};
+        result = result.sign_extend(significant_bits[alignment]);
     }
+    return result;
 }
-
-template<immediate_operand Im, shifts Shift, direction Dir, indexing Ind, write_back Wb, data_size Data>
+template<immediate_operand Im, shifts Shift, direction Dir, indexing Ind, write_back Wb, data_size Data, mll_signedndesd Sign>
 auto instruction_executor::arm_data_load(arm7tdmi& cpu, word const instruction)
     -> void {
     auto& regs = cpu.m_registers;
     auto const offset = cpu::extract_offset<Im, Shift, Dir, Data>(cpu, instruction);
-    auto const r_base = instruction[19, 16];
+    auto const r_base = instruction[19, 16].value;
+    auto const rd     = instruction[15, 12].value;
 
     auto const source_address = [&] -> address {
-        return Ind == indexing::post ? regs[r_base.value] : regs[r_base.value] + offset;
+        return Ind == indexing::post ? regs[r_base] : regs[r_base] + offset;
     }();
 
     cpu.m_bus.access_read(source_address, Data);
     auto data = cpu.m_bus.load_from();
-
+    regs[rd] = cpu::process_data_from_bus<Data, Sign>(data, source_address);
 
 }
 

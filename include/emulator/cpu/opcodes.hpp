@@ -311,11 +311,20 @@ FGBA_EXTRACT_SWITCHES_TST_LIKE(teq)
 FGBA_EXTRACT_SWITCHES_TST_LIKE(cmp)
 FGBA_EXTRACT_SWITCHES_TST_LIKE(cmn)
 
+#undef FGBA_EXTRACT_SWITCHES_TST_LIKE
+
+
 template<>
 constexpr auto arm_instruction::relative_offset<arm_instruction::set::mrs>(which_psr which_psr)
     -> std::size_t { return std::to_underlying(which_psr); }
 template<>
 inline constexpr std::size_t arm_instruction::max_relative_offset<arm_instruction::set::mrs> = 2;
+template<>
+struct arm_instruction::flag_bundle<arm_instruction::set::mrs> {
+    using type = std::tuple<which_psr>;
+};
+
+
 template<>
 constexpr auto arm_instruction::relative_offset<arm_instruction::set::msr>(
     immediate_operand im_op,
@@ -330,6 +339,12 @@ constexpr auto arm_instruction::relative_offset<arm_instruction::set::msr>(
 }
 template<>
 inline constexpr std::size_t arm_instruction::max_relative_offset<arm_instruction::set::msr> = 6; 
+template<>
+struct arm_instruction::flag_bundle<arm_instruction::set::msr> {
+    using type = std::tuple<immediate_operand, mask, which_psr>;
+};
+
+
 
 consteval auto arm_instruction::count() noexcept 
     -> std::size_t { return base_offset<set::count>; }

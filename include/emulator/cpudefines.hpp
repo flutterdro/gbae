@@ -16,6 +16,8 @@ consteval auto operator""_word(unsigned long long num)
 using dword = funky<u64>;
 consteval auto operator""_dword(unsigned long long num)
     -> dword { return dword{.value = static_cast<u64>(num)}; }
+using hword = funky<u16>;
+using byte  = funky<u8>;
 template<typename T>
 struct half_width;
 template<>
@@ -76,9 +78,7 @@ enum class data_size {
     count,
 };
 
-struct address {
-    u32 value;
-};
+struct address : word {};
 
 enum registers {
     r0 = 0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, lr, pc,
@@ -91,20 +91,8 @@ enum registers {
     r0_und = r0, r1_und = r1, r2_und = r2, r3_und = r3, r4_und = r4, r5_und = r5, r6_und = r6, r7_und = r7, r8_und = r8, r9_und = r9, r10_und = r10, r11_und = r11, r12_und = r12, r13_und = r13 + 16, lr_und = lr + 16, pc_und = pc,
 };
 
-enum arm_instruction_set {
-
-    undefined,
-};
 
 }
-}
-
-template<unsigned B, std::integral T>
-constexpr auto signextend(T const x) noexcept -> T {
-    using resigned_t = std::make_signed_t<T>;
-    struct { resigned_t x:B; } s;
-    auto resigned = std::bit_cast<resigned_t>(x);
-    return static_cast<T>(s.x = resigned);
 }
 
 #endif

@@ -64,8 +64,12 @@ namespace qual {
 
 consteval auto generate_arm_opcode_lut()
     -> arm_lut;
+
+
 consteval auto asign_arm_branch_opcodes(arm_lut& lut)
     -> void;
+
+
 consteval auto asign_arm_data_processing(arm_lut& lut)
     -> void;
 template<cpu::arm_instruction::set>
@@ -85,6 +89,18 @@ consteval auto arm_create_register_shift_variation(arm_lut&, arm_instruction_inf
     -> void;
 template<cpu::arm_instruction::set>
 consteval auto arm_create_normal_shift_variation(arm_lut&, arm_instruction_info, cpu::s_bit, cpu::shifts, word id)
+    -> void;
+
+
+consteval auto asign_arm_psr_transfer(arm_lut&)
+    -> void;
+consteval auto arm_create_mrs(arm_lut&)
+    -> void;
+consteval auto arm_create_msr(arm_lut&)
+    -> void;
+consteval auto arm_create_msr_full(arm_lut&)
+    -> void;
+consteval auto arm_create_msr_flag_bits(arm_lut&)
     -> void;
 } // namespace qual
 
@@ -198,7 +214,84 @@ consteval auto qual::asign_arm_data_processing(arm_lut &lut)
     qual::arm_create_and_like<mvn> (lut, base, 0b1111_word);
 }
 
+consteval auto qual::arm_create_mrs(arm_lut& lut)
+    -> void {
+    auto base = arm_instruction_info{
+        .mask   = 0b0000'11111'1'111111'0000'1111'1111'1111_word,
+        .opcode = 0b0000'00010'0'001111'0000'0000'0000'0000_word,
+    };
+    lut[cpu::arm_instruction::construct<mrs>(cpu::which_psr::cpsr).as_index()] = base;
+    base.opcode[22] = 1_bit;
+    lut[cpu::arm_instruction::construct<mrs>(cpu::which_psr::spsr).as_index()] = base;
+}
 
+consteval auto qual::arm_create_msr(arm_lut& lut)
+    -> void {
+    qual::arm_create_msr_full(lut);
+    qual::arm_create_msr_flag_bits(lut);
+}
+
+consteval auto qual::arm_create_msr_full(arm_lut& lut)
+    -> void {
+    auto base = arm_instruction_info{
+        .mask   = 0b0000'11111'1'1111111111'11111111'0000_word,
+        .opcode = 0b0000'00010'0'1010011111'00000000'0000_word,
+    };
+    lut[cpu::arm_instruction::construct<msr>(
+        cpu::immediate_operand::off, 
+        cpu::mask::off, 
+        cpu::which_psr::cpsr
+    ).as_index()] = base;
+    base.opcode[22] = 1_bit;
+    lut[cpu::arm_instruction::construct<msr>(
+        cpu::immediate_operand::off, 
+        cpu::mask::off, 
+        cpu::which_psr::spsr
+    ).as_index()] = base;
+}
+
+consteval auto qual::arm_create_msr_flag_bits(arm_lut& lut)
+    -> void {
+    auto base = arm_instruction_info{
+        .mask   = 0b0000'11'1'11'1'1111111111'0000'0000'0000_word,
+        .opcode = 0b0000'00'0'10'0'1010001111'0000'0000'0000_word,
+    };
+    base.opcode[25] = 1_bit;
+    lut[cpu::arm_instruction::construct<msr>(
+        cpu::immediate_operand::on, 
+        cpu::mask::on, 
+        cpu::which_psr::cpsr
+    ).as_index()] = base;
+    base.opcode[22] = 1_bit;
+    lut[cpu::arm_instruction::construct<msr>(
+        cpu::immediate_operand::on, 
+        cpu::mask::on, 
+        cpu::which_psr::spsr
+    ).as_index()] = base;
+
+    base.opcode[25]  = 0_bit;
+    base.mask[11, 4] = 0b1111'1111_word;
+    base.opcode[22]  = 0_bit;
+    lut[cpu::arm_instruction::construct<msr>(
+        cpu::immediate_operand::off, 
+        cpu::mask::on, 
+        cpu::which_psr::cpsr
+    ).as_index()] = base;
+    base.opcode[22] = 1_bit;
+    lut[cpu::arm_instruction::construct<msr>(
+        cpu::immediate_operand::off, 
+        cpu::mask::on, 
+        cpu::which_psr::spsr
+    ).as_index()] = base;
+    
+}
+
+
+consteval auto qual::asign_arm_psr_transfer(arm_lut& lut) 
+    -> void {
+    qual::arm_create_mrs(lut);
+    qual::arm_create_msr(lut);
+}
 
 consteval auto qual::generate_arm_opcode_lut()
     -> arm_lut {
@@ -206,6 +299,7 @@ consteval auto qual::generate_arm_opcode_lut()
     
     qual::asign_arm_branch_opcodes(ret);
     qual::asign_arm_data_processing(ret);
+    qual::asign_arm_psr_transfer(ret);
 
     return ret;
 
@@ -215,16 +309,6 @@ inline constexpr auto arm_instruction_info_lut = qual::generate_arm_opcode_lut()
 } // namespace 
 
 
-static_assert(arm_instruction_info_lut[223].mask.value
-);
-static_assert(arm_instruction_info_lut[223].opcode.value
-);
-static_assert(arm_instruction_info_lut[
-    cpu::arm_instruction::construct<tst>(
-        cpu::immediate_operand::off, 
-        cpu::shifts::lsl).as_index()
-    ].mask.value
-);
 
 auto cpu::decode_arm(u32 const instruction) noexcept -> cpu::arm_instruction {
     std::size_t index = 0;

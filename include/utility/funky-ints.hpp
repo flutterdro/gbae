@@ -14,6 +14,7 @@ using bit = bool;
 
 template<std::unsigned_integral BaseInt>
 struct basic_bitset {
+    static constexpr unsigned s_max_bit_width = sizeof(BaseInt) * CHAR_BIT;
     struct bit_reference {
         unsigned      bit_index;
         basic_bitset& base;
@@ -113,6 +114,12 @@ struct basic_bitset {
             )
         }; 
     }
+    [[nodiscard]]constexpr auto sign_extend(unsigned from_bit) const noexcept
+        -> basic_bitset { return lsl(s_max_bit_width - 1 - from_bit).asr(s_max_bit_width - 1 - from_bit); }
+    [[nodiscard]]constexpr auto mask_out(unsigned end, unsigned begin) const noexcept
+        -> basic_bitset { return {value & ~create_mask(end, begin)}; }
+    [[nodiscard]]constexpr auto mask_in(unsigned end, unsigned begin) const noexcept
+        -> basic_bitset { return {value & create_mask(end, begin)}; }
     [[nodiscard]]constexpr auto byte_swap() const noexcept
         -> basic_bitset { return {std::byteswap(value)}; }
     [[nodiscard]]constexpr auto operator|(basic_bitset other) const noexcept
@@ -158,7 +165,7 @@ struct basic_bitset {
     
     
     [[nodiscard]]static constexpr auto create_mask(unsigned end_bit, unsigned begin_bit)
-        -> BaseInt { return (~static_cast<BaseInt>(0) >> (sizeof(BaseInt) * CHAR_BIT - end_bit - 1)) << begin_bit; }
+        -> BaseInt { return (~static_cast<BaseInt>(0) >> (sizeof(BaseInt) * CHAR_BIT - (end_bit - begin_bit) - 1)) << begin_bit; }
     BaseInt value;
 };
 
