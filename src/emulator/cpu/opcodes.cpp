@@ -7,56 +7,58 @@
 
 namespace fgba {
 
-namespace cpu {
+namespace cpu::arm {
 
-template<arm_instruction::set Instr>
+template<instruction_spec::set Instr>
 consteval auto test_extraction_and_uniqueness(auto... switches) 
     -> bool {
-    return std::tuple{switches...} == arm_instruction::construct<Instr>(switches...).template switches<Instr>();
+    return std::tuple{switches...} == instruction_spec::construct<Instr>(switches...).template switches<Instr>();
 }
-static_assert(test_extraction_and_uniqueness<arm_instruction::set::b>());
-static_assert(test_extraction_and_uniqueness<arm_instruction::set::bl>());
-static_assert(test_extraction_and_uniqueness<arm_instruction::set::bx>());
-static_assert(test_extraction_and_uniqueness<arm_instruction::set::and_>(
+static_assert(test_extraction_and_uniqueness<instruction_spec::set::b>());
+static_assert(test_extraction_and_uniqueness<instruction_spec::set::bl>());
+static_assert(test_extraction_and_uniqueness<instruction_spec::set::bx>());
+static_assert(test_extraction_and_uniqueness<instruction_spec::set::and_>(
     immediate_operand::off,
     shifts::null,
     s_bit::off
 ));
-static_assert(test_extraction_and_uniqueness<arm_instruction::set::and_>(
+static_assert(test_extraction_and_uniqueness<instruction_spec::set::and_>(
     immediate_operand::on,
     shifts::null,
     s_bit::off
 ));
-static_assert(test_extraction_and_uniqueness<arm_instruction::set::and_>(
+static_assert(test_extraction_and_uniqueness<instruction_spec::set::and_>(
     immediate_operand::off,
     shifts::null,
     s_bit::on
 ));
-static_assert(test_extraction_and_uniqueness<arm_instruction::set::and_>(
+static_assert(test_extraction_and_uniqueness<instruction_spec::set::and_>(
     immediate_operand::off,
     shifts::null,
     s_bit::off
 ));
-static_assert(test_extraction_and_uniqueness<arm_instruction::set::and_>(
+static_assert(test_extraction_and_uniqueness<instruction_spec::set::and_>(
     immediate_operand::off,
     shifts::rsasr,
     s_bit::off
 ));
-static_assert(test_extraction_and_uniqueness<arm_instruction::set::and_>(
+static_assert(test_extraction_and_uniqueness<instruction_spec::set::and_>(
     immediate_operand::off,
     shifts::rsasr,
     s_bit::on
 ));
 }
 
+namespace cpu::arm {
+
 namespace {
 
-using enum cpu::arm_instruction::set;
+using enum instruction_spec::set;
 struct arm_instruction_info {
     word mask;
     word opcode;
 };
-using arm_lut = std::array<arm_instruction_info, cpu::arm_instruction::count()>;
+using arm_lut = std::array<arm_instruction_info, instruction_spec::count()>;
 
 
 //dummy namespace just to qualify functions
@@ -72,23 +74,23 @@ consteval auto asign_arm_branch_opcodes(arm_lut& lut)
 
 consteval auto asign_arm_data_processing(arm_lut& lut)
     -> void;
-template<cpu::arm_instruction::set>
+template<instruction_spec::set>
 consteval auto arm_create_and_like(arm_lut&, arm_instruction_info, word id)
     -> void;
-template<cpu::arm_instruction::set>
+template<instruction_spec::set>
 consteval auto arm_create_tst_like(arm_lut&, arm_instruction_info, word id)
     -> void;
-template<cpu::arm_instruction::set>
-consteval auto arm_create_s_bit_variation(arm_lut&, arm_instruction_info, cpu::s_bit)
+template<instruction_spec::set>
+consteval auto arm_create_s_bit_variation(arm_lut&, arm_instruction_info, s_bit)
     -> void;
-template<cpu::arm_instruction::set>
-consteval auto arm_create_special_shift_variation(arm_lut&, arm_instruction_info, cpu::s_bit, cpu::shifts, word id)
+template<instruction_spec::set>
+consteval auto arm_create_special_shift_variation(arm_lut&, arm_instruction_info, s_bit, cpu::shifts, word id)
     -> void;
-template<cpu::arm_instruction::set>
-consteval auto arm_create_register_shift_variation(arm_lut&, arm_instruction_info, cpu::s_bit, cpu::shifts, word id)
+template<instruction_spec::set>
+consteval auto arm_create_register_shift_variation(arm_lut&, arm_instruction_info, s_bit, cpu::shifts, word id)
     -> void;
-template<cpu::arm_instruction::set>
-consteval auto arm_create_normal_shift_variation(arm_lut&, arm_instruction_info, cpu::s_bit, cpu::shifts, word id)
+template<instruction_spec::set>
+consteval auto arm_create_normal_shift_variation(arm_lut&, arm_instruction_info, s_bit, cpu::shifts, word id)
     -> void;
 
 
@@ -106,88 +108,88 @@ consteval auto arm_create_msr_flag_bits(arm_lut&)
 
 consteval auto qual::asign_arm_branch_opcodes(arm_lut& lut)
     -> void {
-    lut[cpu::arm_instruction::construct<b>().as_index()] = {
+    lut[instruction_spec::construct<b>().as_index()] = {
         .mask   = 0b0000'1111'0000'0000'0000'0000'0000'0000_word,
         .opcode = 0b0000'1010'0000'0000'0000'0000'0000'0000_word,
     };
-    lut[cpu::arm_instruction::construct<bl>().as_index()] = {
+    lut[instruction_spec::construct<bl>().as_index()] = {
         .mask   = 0b0000'1111'0000'0000'0000'0000'0000'0000_word,
         .opcode = 0b0000'1011'0000'0000'0000'0000'0000'0000_word,
     };
-    lut[cpu::arm_instruction::construct<bx>().as_index()] = {
+    lut[instruction_spec::construct<bx>().as_index()] = {
         .mask   = 0b0000'1111'1111'1111'1111'1111'1111'0000_word,
         .opcode = 0b0000'0001'0010'1111'1111'1111'0001'0000_word,
     };
 }
-template<cpu::arm_instruction::set InstructionBase>
-consteval auto qual::arm_create_special_shift_variation(arm_lut& lut, arm_instruction_info base, cpu::s_bit s, cpu::shifts shift, word const id)
+template<instruction_spec::set InstructionBase>
+consteval auto qual::arm_create_special_shift_variation(arm_lut& lut, arm_instruction_info base, s_bit s, cpu::shifts shift, word const id)
     -> void {
     base.mask[11, 4]    = 0b1111'1111_word;
     base.opcode[6, 5]   = id;
     if constexpr (std::to_underlying(InstructionBase) < std::to_underlying(tst)) {
-        lut[cpu::arm_instruction::construct<InstructionBase>(cpu::immediate_operand::off, shift, s).as_index()] = base;
+        lut[instruction_spec::construct<InstructionBase>(cpu::immediate_operand::off, shift, s).as_index()] = base;
     } else {
-        lut[cpu::arm_instruction::construct<InstructionBase>(cpu::immediate_operand::off, shift).as_index()] = base;
+        lut[instruction_spec::construct<InstructionBase>(cpu::immediate_operand::off, shift).as_index()] = base;
     }
 }
-template<cpu::arm_instruction::set InstructionBase>
-consteval auto qual::arm_create_register_shift_variation(arm_lut& lut, arm_instruction_info base, cpu::s_bit s, cpu::shifts shift, word const id)
+template<instruction_spec::set InstructionBase>
+consteval auto qual::arm_create_register_shift_variation(arm_lut& lut, arm_instruction_info base, s_bit s, cpu::shifts shift, word const id)
     -> void {
     base.mask[7, 4]   = 0b1111_word;
     base.opcode[6, 5] = id;
     base.opcode[4]    = 1_bit;
     if constexpr (std::to_underlying(InstructionBase) < std::to_underlying(tst)) {
-        lut[cpu::arm_instruction::construct<InstructionBase>(cpu::immediate_operand::off, shift, s).as_index()] = base;
+        lut[instruction_spec::construct<InstructionBase>(cpu::immediate_operand::off, shift, s).as_index()] = base;
     } else {
-        lut[cpu::arm_instruction::construct<InstructionBase>(cpu::immediate_operand::off, shift).as_index()] = base;
+        lut[instruction_spec::construct<InstructionBase>(cpu::immediate_operand::off, shift).as_index()] = base;
     }
 }
-template<cpu::arm_instruction::set InstructionBase>
-consteval auto qual::arm_create_normal_shift_variation(arm_lut& lut, arm_instruction_info base, cpu::s_bit s, cpu::shifts shift, word const id)
+template<instruction_spec::set InstructionBase>
+consteval auto qual::arm_create_normal_shift_variation(arm_lut& lut, arm_instruction_info base, s_bit s, cpu::shifts shift, word const id)
     -> void {
     base.mask[6, 4]   = 0b111_word;
     base.opcode[6, 5] = id;
     if constexpr (std::to_underlying(InstructionBase) < std::to_underlying(tst)) {
-        lut[cpu::arm_instruction::construct<InstructionBase>(cpu::immediate_operand::off, shift, s).as_index()] = base;
+        lut[instruction_spec::construct<InstructionBase>(cpu::immediate_operand::off, shift, s).as_index()] = base;
     } else {
-        lut[cpu::arm_instruction::construct<InstructionBase>(cpu::immediate_operand::off, shift).as_index()] = base;
+        lut[instruction_spec::construct<InstructionBase>(cpu::immediate_operand::off, shift).as_index()] = base;
     }
 }
-template<cpu::arm_instruction::set InstructionBase>
-consteval auto qual::arm_create_s_bit_variation(arm_lut& lut, arm_instruction_info base, cpu::s_bit s)
+template<instruction_spec::set InstructionBase>
+consteval auto qual::arm_create_s_bit_variation(arm_lut& lut, arm_instruction_info base, s_bit s)
     -> void {
-    base.opcode[20] = s == cpu::s_bit::on ? 1_bit : 0_bit;
-    qual::arm_create_special_shift_variation <InstructionBase>(lut, base, s, cpu::shifts::null,  0b00_word);
-    qual::arm_create_special_shift_variation <InstructionBase>(lut, base, s, cpu::shifts::lsr32, 0b01_word);
-    qual::arm_create_special_shift_variation <InstructionBase>(lut, base, s, cpu::shifts::asr32, 0b10_word);
-    qual::arm_create_special_shift_variation <InstructionBase>(lut, base, s, cpu::shifts::rrx,   0b11_word);
-    qual::arm_create_register_shift_variation<InstructionBase>(lut, base, s, cpu::shifts::rslsl, 0b00_word);
-    qual::arm_create_register_shift_variation<InstructionBase>(lut, base, s, cpu::shifts::rslsr, 0b01_word);
-    qual::arm_create_register_shift_variation<InstructionBase>(lut, base, s, cpu::shifts::rsasr, 0b10_word);
-    qual::arm_create_register_shift_variation<InstructionBase>(lut, base, s, cpu::shifts::rsror, 0b11_word);
-    qual::arm_create_normal_shift_variation  <InstructionBase>(lut, base, s, cpu::shifts::lsl,   0b00_word);
-    qual::arm_create_normal_shift_variation  <InstructionBase>(lut, base, s, cpu::shifts::lsr,   0b01_word);
-    qual::arm_create_normal_shift_variation  <InstructionBase>(lut, base, s, cpu::shifts::asr,   0b10_word);
-    qual::arm_create_normal_shift_variation  <InstructionBase>(lut, base, s, cpu::shifts::ror,   0b11_word);
+    base.opcode[20] = s == s_bit::on ? 1_bit : 0_bit;
+    qual::arm_create_special_shift_variation <InstructionBase>(lut, base, s, shifts::null,  0b00_word);
+    qual::arm_create_special_shift_variation <InstructionBase>(lut, base, s, shifts::lsr32, 0b01_word);
+    qual::arm_create_special_shift_variation <InstructionBase>(lut, base, s, shifts::asr32, 0b10_word);
+    qual::arm_create_special_shift_variation <InstructionBase>(lut, base, s, shifts::rrx,   0b11_word);
+    qual::arm_create_register_shift_variation<InstructionBase>(lut, base, s, shifts::rslsl, 0b00_word);
+    qual::arm_create_register_shift_variation<InstructionBase>(lut, base, s, shifts::rslsr, 0b01_word);
+    qual::arm_create_register_shift_variation<InstructionBase>(lut, base, s, shifts::rsasr, 0b10_word);
+    qual::arm_create_register_shift_variation<InstructionBase>(lut, base, s, shifts::rsror, 0b11_word);
+    qual::arm_create_normal_shift_variation  <InstructionBase>(lut, base, s, shifts::lsl,   0b00_word);
+    qual::arm_create_normal_shift_variation  <InstructionBase>(lut, base, s, shifts::lsr,   0b01_word);
+    qual::arm_create_normal_shift_variation  <InstructionBase>(lut, base, s, shifts::asr,   0b10_word);
+    qual::arm_create_normal_shift_variation  <InstructionBase>(lut, base, s, shifts::ror,   0b11_word);
     base.opcode[25] = 1_bit;
     if constexpr (std::to_underlying(InstructionBase) < std::to_underlying(tst)) {
-        lut[cpu::arm_instruction::construct<InstructionBase>(cpu::immediate_operand::on, cpu::shifts::null, s).as_index()] = base;
+        lut[instruction_spec::construct<InstructionBase>(cpu::immediate_operand::on, cpu::shifts::null, s).as_index()] = base;
     } else {
-        lut[cpu::arm_instruction::construct<InstructionBase>(cpu::immediate_operand::on, cpu::shifts::null).as_index()] = base;
+        lut[instruction_spec::construct<InstructionBase>(cpu::immediate_operand::on, cpu::shifts::null).as_index()] = base;
     }
 }
-template<cpu::arm_instruction::set InstructionBase>
+template<instruction_spec::set InstructionBase>
 consteval auto qual::arm_create_and_like(arm_lut& lut, arm_instruction_info base, word const id)
     -> void {
     base.opcode[24, 21] = id;
-    arm_create_s_bit_variation<InstructionBase>(lut, base, cpu::s_bit::on);
-    arm_create_s_bit_variation<InstructionBase>(lut, base, cpu::s_bit::off);
+    arm_create_s_bit_variation<InstructionBase>(lut, base, s_bit::on);
+    arm_create_s_bit_variation<InstructionBase>(lut, base, s_bit::off);
 }
-template<cpu::arm_instruction::set InstructionBase>
+template<instruction_spec::set InstructionBase>
 consteval auto qual::arm_create_tst_like(arm_lut& lut, arm_instruction_info base, word const id)
     -> void {
     base.opcode[24, 21] = id;
-    arm_create_s_bit_variation<InstructionBase>(lut, base, cpu::s_bit::on);
+    arm_create_s_bit_variation<InstructionBase>(lut, base, s_bit::on);
 }
 
 consteval auto qual::asign_arm_data_processing(arm_lut &lut)
@@ -220,9 +222,9 @@ consteval auto qual::arm_create_mrs(arm_lut& lut)
         .mask   = 0b0000'11111'1'111111'0000'1111'1111'1111_word,
         .opcode = 0b0000'00010'0'001111'0000'0000'0000'0000_word,
     };
-    lut[cpu::arm_instruction::construct<mrs>(cpu::which_psr::cpsr).as_index()] = base;
+    lut[instruction_spec::construct<mrs>(cpu::which_psr::cpsr).as_index()] = base;
     base.opcode[22] = 1_bit;
-    lut[cpu::arm_instruction::construct<mrs>(cpu::which_psr::spsr).as_index()] = base;
+    lut[instruction_spec::construct<mrs>(cpu::which_psr::spsr).as_index()] = base;
 }
 
 consteval auto qual::arm_create_msr(arm_lut& lut)
@@ -237,16 +239,16 @@ consteval auto qual::arm_create_msr_full(arm_lut& lut)
         .mask   = 0b0000'11111'1'1111111111'11111111'0000_word,
         .opcode = 0b0000'00010'0'1010011111'00000000'0000_word,
     };
-    lut[cpu::arm_instruction::construct<msr>(
-        cpu::immediate_operand::off, 
-        cpu::mask::off, 
-        cpu::which_psr::cpsr
+    lut[instruction_spec::construct<msr>(
+        immediate_operand::off, 
+        mask::off, 
+        which_psr::cpsr
     ).as_index()] = base;
     base.opcode[22] = 1_bit;
-    lut[cpu::arm_instruction::construct<msr>(
-        cpu::immediate_operand::off, 
-        cpu::mask::off, 
-        cpu::which_psr::spsr
+    lut[instruction_spec::construct<msr>(
+        immediate_operand::off, 
+        mask::off, 
+        which_psr::spsr
     ).as_index()] = base;
 }
 
@@ -257,35 +259,34 @@ consteval auto qual::arm_create_msr_flag_bits(arm_lut& lut)
         .opcode = 0b0000'00'0'10'0'1010001111'0000'0000'0000_word,
     };
     base.opcode[25] = 1_bit;
-    lut[cpu::arm_instruction::construct<msr>(
-        cpu::immediate_operand::on, 
-        cpu::mask::on, 
-        cpu::which_psr::cpsr
+    lut[instruction_spec::construct<msr>(
+        immediate_operand::on, 
+        mask::on, 
+        which_psr::cpsr
     ).as_index()] = base;
     base.opcode[22] = 1_bit;
-    lut[cpu::arm_instruction::construct<msr>(
-        cpu::immediate_operand::on, 
-        cpu::mask::on, 
-        cpu::which_psr::spsr
+    lut[instruction_spec::construct<msr>(
+        immediate_operand::on, 
+        mask::on, 
+        which_psr::spsr
     ).as_index()] = base;
 
     base.opcode[25]  = 0_bit;
     base.mask[11, 4] = 0b1111'1111_word;
     base.opcode[22]  = 0_bit;
-    lut[cpu::arm_instruction::construct<msr>(
-        cpu::immediate_operand::off, 
-        cpu::mask::on, 
-        cpu::which_psr::cpsr
+    lut[instruction_spec::construct<msr>(
+        immediate_operand::off, 
+        mask::on, 
+        which_psr::cpsr
     ).as_index()] = base;
     base.opcode[22] = 1_bit;
-    lut[cpu::arm_instruction::construct<msr>(
-        cpu::immediate_operand::off, 
-        cpu::mask::on, 
-        cpu::which_psr::spsr
+    lut[instruction_spec::construct<msr>(
+        immediate_operand::off, 
+        mask::on, 
+        which_psr::spsr
     ).as_index()] = base;
     
 }
-
 
 consteval auto qual::asign_arm_psr_transfer(arm_lut& lut) 
     -> void {
@@ -306,18 +307,24 @@ consteval auto qual::generate_arm_opcode_lut()
 }
 
 inline constexpr auto arm_instruction_info_lut = qual::generate_arm_opcode_lut();
+constexpr auto t = arm_instruction_info_lut[instruction_spec::construct<msr>(
+        immediate_operand::on, 
+        mask::on, 
+        which_psr::cpsr
+    ).as_index()].mask.value;
+static_assert(t);
 } // namespace 
 
 
-
-auto cpu::decode_arm(u32 const instruction) noexcept -> cpu::arm_instruction {
+} // namespace cpu::arm
+namespace cpu {
+auto decode(arm::instruction const instruction) noexcept -> arm::instruction_spec {
     std::size_t index = 0;
-    for(; index < arm_instruction_info_lut.size(); ++index) {
-        auto const [mask, opcode] = arm_instruction_info_lut[index];
-        if ((word{instruction} & mask) == opcode) break;
+    for(; index < arm::arm_instruction_info_lut.size(); ++index) {
+        auto const [mask, opcode] = arm::arm_instruction_info_lut[index];
+        if ((instruction & mask) == opcode) break;
     }
-    return cpu::arm_instruction{index};
+    return arm::instruction_spec{index};
 }
-
-
+}
 } // namespace fgba

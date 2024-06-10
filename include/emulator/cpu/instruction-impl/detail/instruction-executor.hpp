@@ -16,55 +16,57 @@ namespace fgba::cpu {
 using single_operand_operation = auto(*)(word) -> word;
 using logical_operation        = auto(*)(word, word) -> word;
 using arithmetic_operation     = auto(*)(word, word, word*, u32) -> bool;
+namespace arm {
 struct instruction_executor {
-    static auto arm_b(arm7tdmi&, word)
+    static auto b(arm7tdmi&, instruction)
         -> void;
-    static auto arm_bl(arm7tdmi&, word)
+    static auto bl(arm7tdmi&, instruction)
         -> void;
-    static auto arm_bx(arm7tdmi& cpu, word instruction) 
+    static auto bx(arm7tdmi&, instruction) 
         -> void; 
-    template<immediate_operand I, s_bit S, shifts Shift, arithmetic_operation Operation>
-    static auto arm_arithmetic(arm7tdmi&, word instruction)
+    template<immediate_operand, s_bit, shifts, arithmetic_operation>
+    static auto arithmetic(arm7tdmi&, instruction)
         -> void;
-    template<immediate_operand I, shifts Shift, arithmetic_operation Operation>
-    static auto arm_arithmetic(arm7tdmi&, word instruction)
+    template<immediate_operand, shifts, arithmetic_operation>
+    static auto arithmetic(arm7tdmi&, instruction)
         -> void;
-    template<immediate_operand I, s_bit S, shifts Shift, logical_operation Operation>
-    static auto arm_logical(arm7tdmi&, word instruction)
+    template<immediate_operand, s_bit, shifts, logical_operation>
+    static auto logical(arm7tdmi&, instruction)
         -> void;
-    template<immediate_operand I, shifts Shift, logical_operation Operation>
-    static auto arm_logical(arm7tdmi&, word instruction)
+    template<immediate_operand, shifts, logical_operation>
+    static auto logical(arm7tdmi&, instruction)
         -> void;
-    template<immediate_operand I, s_bit S, shifts Shift, single_operand_operation Operation>
-    static auto arm_single_operand(arm7tdmi&, word instruction) 
+    template<immediate_operand, s_bit, shifts, single_operand_operation>
+    static auto single_operand(arm7tdmi&, instruction) 
         -> void;
-    template<s_bit S, accumulate A>
-    static auto arm_multiply(arm7tdmi&, word instruction)
+    template<s_bit, accumulate>
+    static auto multiply(arm7tdmi&, instruction)
         -> void;
-    template<s_bit S, accumulate A, mll_signedndesd MS>
-    static auto arm_multiply_long(arm7tdmi&, word instruction)
+    template<s_bit, accumulate, mll_signedndesd>
+    static auto multiply_long(arm7tdmi&, instruction)
         -> void;
-    template<immediate_operand I, which_psr P, mask M>
-    static auto arm_move_to_psr(arm7tdmi&, word instruction)
+    template<immediate_operand, which_psr, mask>
+    static auto move_to_psr(arm7tdmi&, instruction)
         -> void;
-    template<which_psr P>
-    static auto arm_move_from_psr(arm7tdmi&, word instruction)
+    template<which_psr>
+    static auto move_from_psr(arm7tdmi&, instruction)
         -> void;
-    template<immediate_operand Im, shifts Shift, direction Dir, indexing Ind, write_back Wb, data_size Data>
-    static auto arm_data_store(arm7tdmi&, word instruction)
+    template<immediate_operand, shifts, direction, indexing, write_back, data_size>
+    static auto data_store(arm7tdmi&, instruction)
         -> void;
-    template<immediate_operand Im, shifts Shift, direction Dir, indexing Ind, write_back Wb, data_size Data, mll_signedndesd>
-    static auto arm_data_load(arm7tdmi&, word instruction)
+    template<immediate_operand, shifts, direction, indexing, write_back, data_size, mll_signedndesd>
+    static auto data_load(arm7tdmi&, instruction)
         -> void;
-    template<immediate_operand Im, shifts Shift, direction Dir, indexing Ind, write_back Wb, data_size Data>
-    static auto arm_block_data_store(arm7tdmi&, word instruction)
+    template<immediate_operand, shifts, direction, indexing, write_back, data_size>
+    static auto block_data_store(arm7tdmi&, instruction)
         -> void;
 };
-} //namespace fgba::cpu
+} // namespace arm
+} // namespace fgba::cpu
 
-namespace fgba::cpu {
+namespace fgba::cpu::arm {
 
-inline auto instruction_executor::arm_b(arm7tdmi& cpu, word const instruction) 
+inline auto instruction_executor::b(arm7tdmi& cpu, instruction const instruction) 
     -> void {
     auto const offset = instruction[23, 0].sign_extend<23>().lsl(2);
     
@@ -75,7 +77,7 @@ inline auto instruction_executor::arm_b(arm7tdmi& cpu, word const instruction)
     cpu.prefetch();
 }
 
-inline auto instruction_executor::arm_bl(arm7tdmi& cpu, word const instruction)
+inline auto instruction_executor::bl(arm7tdmi& cpu, instruction const instruction)
     -> void {
     auto const offset = instruction[23, 0].sign_extend<23>().lsl(2);    
     cpu.m_registers.lr() = cpu.m_registers.pc() - 4_word;
@@ -87,7 +89,7 @@ inline auto instruction_executor::arm_bl(arm7tdmi& cpu, word const instruction)
     cpu.prefetch();
 }
 
-inline auto instruction_executor::arm_bx(arm7tdmi& cpu, word const instruction)
+inline auto instruction_executor::bx(arm7tdmi& cpu, instruction const instruction)
     -> void {
     auto const rn = instruction[3, 0];
     auto& regs = cpu.m_registers;
@@ -114,7 +116,7 @@ constexpr auto get_operand2(auto const shifted) -> word {
 
 template<immediate_operand I, s_bit S, shifts Shift>
 FGBA_FORCE_INLINE
-constexpr auto i_have_no_clue_how_to_name_this(arm7tdmi const& cpu, word const instruction) {
+constexpr auto i_have_no_clue_how_to_name_this(arm7tdmi const& cpu, instruction const instruction) {
     auto const& regs = cpu.m_registers;
     if constexpr (I == immediate_operand::on) {
         auto const shift_operand = instruction[7, 0];
@@ -135,12 +137,12 @@ constexpr auto i_have_no_clue_how_to_name_this(arm7tdmi const& cpu, word const i
 }
 
 template<immediate_operand I, s_bit S, shifts Shift, logical_operation Operation>
-auto instruction_executor::arm_logical(arm7tdmi& cpu, word const instruction) -> void {
+auto instruction_executor::logical(arm7tdmi& cpu, instruction const instruction) -> void {
     auto const rd = instruction[15, 12].value;
     auto const rn = instruction[19, 16].value;
     auto& regs = cpu.m_registers;
-    auto const shifted_result = cpu::i_have_no_clue_how_to_name_this<I, S, Shift>(cpu, instruction);
-    auto const operand2 = cpu::get_operand2<S>(shifted_result);
+    auto const shifted_result = i_have_no_clue_how_to_name_this<I, S, Shift>(cpu, instruction);
+    auto const operand2 = get_operand2<S>(shifted_result);
     [[maybe_unused]]auto const res = regs[rd] = Operation(regs[rn], operand2); 
     if constexpr (S == s_bit::on) {
         regs.cpsr().set_ccf(ccf::c, shifted_result.carryout);
@@ -151,11 +153,11 @@ auto instruction_executor::arm_logical(arm7tdmi& cpu, word const instruction) ->
 }
 
 template<immediate_operand I, shifts Shift, logical_operation Operation>
-auto instruction_executor::arm_logical(arm7tdmi& cpu, word const instruction) -> void {
+auto instruction_executor::logical(arm7tdmi& cpu, instruction const instruction) -> void {
     auto const rn = instruction[19, 16].value;
     auto& regs = cpu.m_registers;
-    auto const shifted_result = cpu::i_have_no_clue_how_to_name_this<I, s_bit::on, Shift>(cpu, instruction);
-    auto const operand2 = cpu::get_operand2<s_bit::on>(shifted_result);
+    auto const shifted_result = i_have_no_clue_how_to_name_this<I, s_bit::on, Shift>(cpu, instruction);
+    auto const operand2 = get_operand2<s_bit::on>(shifted_result);
     auto const res = Operation(regs[rn], operand2); 
     regs.cpsr().set_ccf(ccf::c, shifted_result.carryout);
     regs.cpsr().set_ccf(ccf::z, res == 0_word);
@@ -163,39 +165,39 @@ auto instruction_executor::arm_logical(arm7tdmi& cpu, word const instruction) ->
 }
 
 template<immediate_operand I, s_bit S, shifts Shift, arithmetic_operation Operation>
-auto instruction_executor::arm_arithmetic(arm7tdmi& cpu, word const instruction) -> void {
+auto instruction_executor::arithmetic(arm7tdmi& cpu, instruction const instruction) -> void {
     auto const rd = instruction[15, 12].value;
     auto const rn = instruction[19, 16].value;
     auto& regs = cpu.m_registers;
     auto& destination = regs[rd];
-    auto const operand2 = cpu::i_have_no_clue_how_to_name_this<I, s_bit::off, Shift>(cpu, instruction);
+    auto const operand2 = i_have_no_clue_how_to_name_this<I, s_bit::off, Shift>(cpu, instruction);
     [[maybe_unused]]auto const carryout = Operation(regs[rn], operand2, &destination, regs.cpsr().check_ccf(ccf::c)); 
     if constexpr (S == s_bit::on) {
         regs.cpsr().set_ccf(ccf::c, carryout);
         regs.cpsr().set_ccf(ccf::z, destination == 0_word);
         regs.cpsr().set_ccf(ccf::n, destination[31] == 1_bit);
-        regs.cpsr().set_ccf(ccf::v, cpu::check_overflow(regs[rn], operand2, destination));
+        regs.cpsr().set_ccf(ccf::v, check_overflow(regs[rn], operand2, destination));
     }
 }
 template<immediate_operand I, shifts Shift, arithmetic_operation Operation>
-auto instruction_executor::arm_arithmetic(arm7tdmi& cpu, word const instruction) -> void {
+auto instruction_executor::arithmetic(arm7tdmi& cpu, instruction const instruction) -> void {
     auto const rn = instruction[19, 16].value;
     auto& regs = cpu.m_registers;
     word destination;
-    auto const operand2 = cpu::i_have_no_clue_how_to_name_this<I, s_bit::off, Shift>(cpu, instruction);
+    auto const operand2 = i_have_no_clue_how_to_name_this<I, s_bit::off, Shift>(cpu, instruction);
     auto const carryout = Operation(regs[rn], operand2, &destination, regs.cpsr().check_ccf(ccf::c)); 
     regs.cpsr().set_ccf(ccf::c, carryout);
     regs.cpsr().set_ccf(ccf::z, destination == 0_word);
     regs.cpsr().set_ccf(ccf::n, destination[31]);
-    regs.cpsr().set_ccf(ccf::v, cpu::check_overflow(regs[rn], operand2, destination));
+    regs.cpsr().set_ccf(ccf::v, check_overflow(regs[rn], operand2, destination));
 }
 
 template<immediate_operand I, s_bit S, shifts Shift, single_operand_operation Operation>
-auto instruction_executor::arm_single_operand(arm7tdmi& cpu, word const instruction) -> void {
+auto instruction_executor::single_operand(arm7tdmi& cpu, instruction const instruction) -> void {
     auto const rd = instruction[15, 12].value;
     auto& regs = cpu.m_registers;
-    auto const shifted_result = cpu::i_have_no_clue_how_to_name_this<I, S, Shift>(cpu, instruction);
-    auto const operand = cpu::get_operand2<S>(shifted_result);
+    auto const shifted_result = i_have_no_clue_how_to_name_this<I, S, Shift>(cpu, instruction);
+    auto const operand = get_operand2<S>(shifted_result);
     [[maybe_unused]]auto const res = regs[rd] = Operation(operand); 
     if constexpr (S == s_bit::on) {
         regs.cpsr().set_ccf(ccf::c, shifted_result.carryout);
@@ -205,7 +207,7 @@ auto instruction_executor::arm_single_operand(arm7tdmi& cpu, word const instruct
 }
 
 template<s_bit S, accumulate A>
-auto instruction_executor::arm_multiply(arm7tdmi& cpu, word const instruction)
+auto instruction_executor::multiply(arm7tdmi& cpu, instruction const instruction)
     -> void {
     auto const rd = instruction[19, 16].value;
     [[maybe_unused]]
@@ -227,7 +229,7 @@ auto instruction_executor::arm_multiply(arm7tdmi& cpu, word const instruction)
 }
 
 template<s_bit S, accumulate A, mll_signedndesd MS>
-auto instruction_executor::arm_multiply_long(arm7tdmi& cpu, word const instruction)
+auto instruction_executor::multiply_long(arm7tdmi& cpu, instruction const instruction)
     -> void {
     auto const rdhi = instruction[19, 16].value;
     auto const rdlo = instruction[15, 12].value;
@@ -263,7 +265,7 @@ auto instruction_executor::arm_multiply_long(arm7tdmi& cpu, word const instructi
 
 
 template<which_psr P>
-auto instruction_executor::arm_move_from_psr(arm7tdmi& cpu, word const instruction)
+auto instruction_executor::move_from_psr(arm7tdmi& cpu, instruction const instruction)
     -> void {
     auto& regs = cpu.m_registers;
     auto const rd = instruction[15, 12].value;
@@ -275,10 +277,10 @@ auto instruction_executor::arm_move_from_psr(arm7tdmi& cpu, word const instructi
     }
 }
 template<immediate_operand I, which_psr P, mask M>
-auto instruction_executor::arm_move_to_psr(arm7tdmi& cpu, word const instruction)
+auto instruction_executor::move_to_psr(arm7tdmi& cpu, instruction const instruction)
     -> void {
     auto& regs = cpu.m_registers;
-    auto const operand = cpu::i_have_no_clue_how_to_name_this<I, s_bit::off, shifts::null>(cpu, instruction);
+    auto const operand = i_have_no_clue_how_to_name_this<I, s_bit::off, shifts::null>(cpu, instruction);
 
     auto mask = u32{0};
     if constexpr (M == mask::on) operand &= ~(mask = 0xf_u32 << 27);
@@ -293,7 +295,7 @@ auto instruction_executor::arm_move_to_psr(arm7tdmi& cpu, word const instruction
 
 
 template<immediate_operand Im, shifts Shift, direction Dir, data_size Data>
-auto extract_offset(arm7tdmi& cpu, word const instruction) 
+auto extract_offset(arm7tdmi& cpu, instruction const instruction) 
     -> u32 {
     auto const absolute_offset = (
         Im == immediate_operand::on ? (
@@ -303,7 +305,7 @@ auto extract_offset(arm7tdmi& cpu, word const instruction)
                 instruction[11, 0]
             )
         ) : (
-            (cpu::i_have_no_clue_how_to_name_this<immediate_operand::off, s_bit::off, Shift>(cpu, instruction))
+            (i_have_no_clue_how_to_name_this<immediate_operand::off, s_bit::off, Shift>(cpu, instruction))
         )
     );
     auto const adjusted_sign_offset = (
@@ -317,10 +319,10 @@ auto extract_offset(arm7tdmi& cpu, word const instruction)
 }
 
 template<immediate_operand Im, shifts Shift, direction Dir, indexing Ind, write_back Wb, data_size Data>
-auto instruction_executor::arm_data_store(arm7tdmi& cpu, word const instruction) 
+auto instruction_executor::data_store(arm7tdmi& cpu, instruction const instruction) 
     -> void {
     auto& regs = cpu.m_registers;
-    auto const offset = cpu::extract_offset<Im, Shift, Dir, Data>(cpu, instruction);
+    auto const offset = extract_offset<Im, Shift, Dir, Data>(cpu, instruction);
     auto const data_to_load_on_bus = [&] -> word {
         word result;
         auto const data_to_transfer = regs[instruction[15, 12].value];
@@ -368,10 +370,10 @@ auto process_data_from_bus(word const data, address const address)
     return result;
 }
 template<immediate_operand Im, shifts Shift, direction Dir, indexing Ind, write_back Wb, data_size Data, mll_signedndesd Sign>
-auto instruction_executor::arm_data_load(arm7tdmi& cpu, word const instruction)
+auto instruction_executor::data_load(arm7tdmi& cpu, instruction const instruction)
     -> void {
     auto& regs = cpu.m_registers;
-    auto const offset = cpu::extract_offset<Im, Shift, Dir, Data>(cpu, instruction);
+    auto const offset = extract_offset<Im, Shift, Dir, Data>(cpu, instruction);
     auto const r_base = instruction[19, 16].value;
     auto const rd     = instruction[15, 12].value;
 
@@ -381,7 +383,7 @@ auto instruction_executor::arm_data_load(arm7tdmi& cpu, word const instruction)
 
     cpu.m_bus.access_read(source_address, Data);
     auto data = cpu.m_bus.load_from();
-    regs[rd] = cpu::process_data_from_bus<Data, Sign>(data, source_address);
+    regs[rd] = process_data_from_bus<Data, Sign>(data, source_address);
 
 }
 

@@ -6,8 +6,11 @@
 #include "emulator/cpu/registermanager.hpp"
 
 namespace fgba::cpu {
+namespace arm {
+struct instruction_executor;
+}
 class arm7tdmi {
-    friend struct instruction_executor;
+    friend struct arm::instruction_executor;
 public:
     arm7tdmi();
     auto connect_bus(connector)

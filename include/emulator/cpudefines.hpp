@@ -18,6 +18,10 @@ consteval auto operator""_dword(unsigned long long num)
     -> dword { return dword{.value = static_cast<u64>(num)}; }
 using hword = funky<u16>;
 using byte  = funky<u8>;
+
+namespace cpu::arm   { struct instruction : word  {}; }
+namespace cpu::thumb { struct instruction : hword {}; }
+
 template<typename T>
 struct half_width;
 template<>

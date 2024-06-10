@@ -12,10 +12,10 @@ auto arm7tdmi::advance_execution() -> void {
     if (m_registers.cpsr().is_thumb()) {
         //TODO: implement thumb
     } else {
-        auto current_instruction = m_prefetch_buffer.read<word>();
+        auto current_instruction = m_prefetch_buffer.read<arm::instruction>();
         prefetch();
-        auto decoded = cpu::decode_arm(current_instruction.value);
-        cpu::execute_arm(*this, decoded, current_instruction);
+        auto decoded = decode(current_instruction);
+        cpu::arm::execute(*this, decoded, current_instruction);
     }
     increment_program_counter();
 }
