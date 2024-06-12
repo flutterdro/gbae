@@ -11,7 +11,11 @@
 namespace fgba {
 
 using bit = bool;
-
+namespace literals {
+consteval auto operator""_bit(unsigned long long num)
+    -> bit { return static_cast<bit>(num); }
+}
+using namespace literals;
 template<std::unsigned_integral BaseInt>
 struct basic_bitset {
     static constexpr unsigned s_max_bit_width = sizeof(BaseInt) * CHAR_BIT;
@@ -151,6 +155,36 @@ struct basic_bitset {
     [[nodiscard]]constexpr auto operator-() const noexcept
         -> basic_bitset { return {-value}; }
 
+    [[nodiscard]]constexpr auto clz() const noexcept
+        -> unsigned { return static_cast<unsigned>(std::countl_zero(value)); }
+    [[nodiscard]]constexpr auto crz() const noexcept
+        -> unsigned { return static_cast<unsigned>(std::countr_zero(value)); }
+    [[nodiscard]]constexpr auto clo() const noexcept
+        -> unsigned { return static_cast<unsigned>(std::countl_one(value)); }
+    [[nodiscard]]constexpr auto cro() const noexcept
+        -> unsigned { return static_cast<unsigned>(std::countr_one(value)); }
+    [[nodiscard]]constexpr auto popcnt() const noexcept
+        -> unsigned { return static_cast<unsigned>(std::popcount(value)); }
+    [[nodiscard]]constexpr auto bit_width() const noexcept
+        -> unsigned { return static_cast<unsigned>(std::bit_width(value)); }
+    [[nodiscard]]constexpr auto bit_floor() const noexcept
+        -> unsigned { return static_cast<unsigned>(std::bit_floor(value)); }
+    [[nodiscard]]constexpr auto bit_ceil() const noexcept
+        -> unsigned { return static_cast<unsigned>(std::bit_ceil(value)); }
+
+    constexpr auto pop_mso() noexcept
+        -> unsigned { 
+        auto mso_index = s_max_bit_width - 1 - clz(); 
+        (*this)[mso_index] = 0_bit; 
+        return mso_index;
+    }
+    constexpr auto pop_lso() noexcept
+        -> unsigned {
+        auto lso_index = crz();
+        (*this)[lso_index] = 0_bit;
+        return lso_index;
+    }
+
     [[nodiscard]]constexpr auto operator<=>(basic_bitset const&) const noexcept = default;
     template<typename OtherBaseInt>
     explicit constexpr operator basic_bitset<OtherBaseInt>() const noexcept {
@@ -173,8 +207,6 @@ struct basic_bitset {
 template<typename T>
 using funky = basic_bitset<T>;
 
-consteval auto operator""_bit(unsigned long long num) 
-    -> bit { return static_cast<bit>(num); }
 
 
 
@@ -197,5 +229,7 @@ struct fmt::formatter<fgba::funky<T>> : fmt::formatter<T> {
         return fmt::formatter<T>::format(value.value, ctx);
     }
 };
+
+using namespace fgba::literals;
 
 #endif

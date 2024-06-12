@@ -10,7 +10,7 @@
 #include <bit>
 #include <utility>
 
-namespace fgba::cpu {
+namespace fgba::cpu { 
 
 
 using single_operand_operation = auto(*)(word) -> word;
@@ -57,7 +57,7 @@ struct instruction_executor {
     template<immediate_operand, shifts, direction, indexing, write_back, data_size, mll_signedndesd>
     static auto data_load(arm7tdmi&, instruction)
         -> void;
-    template<immediate_operand, shifts, direction, indexing, write_back, data_size>
+    template<direction, indexing, write_back>
     static auto block_data_store(arm7tdmi&, instruction)
         -> void;
 };
@@ -388,6 +388,40 @@ auto instruction_executor::data_load(arm7tdmi& cpu, instruction const instructio
 }
 
 
+template<direction Dir, indexing Ind, write_back Wb>
+auto instruction_executor::block_data_store(arm7tdmi& cpu, instruction const instruction)
+    -> void {
+    auto const r_base  = instruction[19, 16].value;
+    auto register_list = instruction[15, 0];
+    auto& regs         = cpu.m_registers;
+
+    auto [effective_pointer, write_back_pointer] = [&] -> std::pair<address, address> {
+        auto effective_pointer_res  = regs[r_base];
+        auto write_back_pointer_res = regs[r_base];
+        auto const address_offset   = word{register_list.popcnt() * 4};
+
+        if (Dir == direction::up) {
+            effective_pointer_res  += Ind == indexing::pre ? 4_word : 0_word;
+            write_back_pointer_res += address_offset;
+        } else {
+            effective_pointer_res   = effective_pointer_res - address_offset + 
+                (Ind == indexing::pre ? 0_word : 4_word);
+            write_back_pointer_res -= address_offset;
+        }
+        return {{effective_pointer_res}, {write_back_pointer_res}};
+    }();
+    if (Wb == write_back::on and register_list[r_base] == 1_bit) {
+        if (register_list.crz() != r_base) {
+            regs[r_base] = write_back_pointer;
+        }
+    }
+    while (register_list != 0_word) {
+        auto const register_to_transfer = register_list.pop_lso();
+        cpu.m_bus.load_on(regs[register_to_transfer]);
+        cpu.m_bus.access_write(effective_pointer, data_size::word);
+        effective_pointer += 4_word;
+    } 
+}
 
 }
 
