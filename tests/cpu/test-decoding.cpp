@@ -2,6 +2,7 @@
 #include "emulator/cpu/opcodes.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_template_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 #include <utility>
 #include "emulator/cpudefines.hpp"
 using namespace fgba;
@@ -413,4 +414,56 @@ TEST_CASE("Decoding arm mrs", "[cpu][decoding][arm]") {
 
         CHECK(result.as_index() == expected.as_index());
     }
+}
+
+TEST_CASE("Decoding arm mul", "[cpu][decoding][arm]") {
+    auto const skeleton = 0b1010'000000'0'0'1111'1111'0000'1001'1011_word;
+    auto const a        = 0b0000'000000'1'0'0000'0000'0000'0000'0000_word;
+    auto const s        = 0b0000'000000'0'1'0000'0000'0000'0000'0000_word;
+
+    auto const result_none = decode({skeleton});
+    auto const result_a    = decode({skeleton | a});
+    auto const result_s    = decode({skeleton | s});
+    auto const result_as   = decode({skeleton | a | s});
+
+    auto const expected_none = arm::instruction_spec::construct<mul>(
+        s_bit::off,
+        accumulate::off
+    );
+    auto const expected_a = arm::instruction_spec::construct<mul>(
+        s_bit::off,
+        accumulate::on
+    );
+    auto const expected_s = arm::instruction_spec::construct<mul>(
+        s_bit::on,
+        accumulate::off
+    );
+    auto const expected_as = arm::instruction_spec::construct<mul>(
+        s_bit::on,
+        accumulate::on
+    );
+
+    CHECK(result_none.as_index() == expected_none.as_index());
+    CHECK(result_a.as_index() == expected_a.as_index());
+    CHECK(result_s.as_index() == expected_s.as_index());
+    CHECK(result_as.as_index() == expected_as.as_index());
+}
+TEST_CASE("Decoding arm mll", "[cpu][decoding][arm]") {
+    auto const skeleton = 0b1010'00001'0'0'0'1111'1111'0000'1001'1011_word;
+    auto const a        = 0b0000'00000'0'1'0'0000'0000'0000'0000'0000_word;
+    auto const s        = 0b0000'00000'0'0'1'0000'0000'0000'0000'0000_word;
+    auto const sign     = 0b0000'00000'1'0'0'0000'0000'0000'0000'0000_word;
+    auto a_d    = [=](accumulate a_) { return a_ == accumulate::on ? a : 0_word; };  //NOLINT
+    auto s_d    = [=](s_bit s_) { return s_ == s_bit::on ? s : 0_word; };            //NOLINT
+    auto sign_d = [=](mll_signedndesd sign_) { return sign_ == mll_signedndesd::signed_ ? sign : 0_word; }; //NOLINT
+
+    auto s_var    = GENERATE(s_bit::on, s_bit::off);
+    auto a_var    = GENERATE(accumulate::on, accumulate::off);
+    auto sign_var = GENERATE(mll_signedndesd::signed_, mll_signedndesd::unsigned_);
+
+    auto const expected = arm::instruction_spec::construct<mll>(s_var, a_var, sign_var);
+    auto const result   = decode({skeleton | s_d(s_var) | a_d(a_var) | sign_d(sign_var)});
+
+    CHECK(result.as_index() == expected.as_index());
+
 }

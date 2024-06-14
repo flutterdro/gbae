@@ -350,6 +350,36 @@ struct instruction_spec::flag_bundle<instruction_spec::set::msr> {
 };
 
 
+template<>
+constexpr auto instruction_spec::relative_offset<instruction_spec::set::mul>(
+    s_bit s,
+    accumulate a
+) -> std::size_t {
+    return detail::offset<s_bit> * std::to_underlying(a) + std::to_underlying(s); //NOLINT
+}
+template<>
+inline constexpr std::size_t instruction_spec::max_relative_offset<instruction_spec::set::mul> = 4;
+template<>
+struct instruction_spec::flag_bundle<instruction_spec::set::mul> {
+    using type = std::tuple<s_bit, accumulate>;
+};
+
+
+template<>
+constexpr auto instruction_spec::relative_offset<instruction_spec::set::mll>(
+    s_bit s,
+    accumulate a,
+    mll_signedndesd sign
+) -> std::size_t {
+    auto tu = [](auto val) -> std::size_t { return std::to_underlying(val); }; //NOLINT
+    return detail::offset<s_bit, accumulate> * tu(sign) + detail::offset<s_bit> * tu(a) + tu(s);
+}
+template<>
+inline constexpr auto instruction_spec::max_relative_offset<instruction_spec::set::mll> = 8;
+template<>
+struct instruction_spec::flag_bundle<instruction_spec::set::mll> {
+    using type = std::tuple<s_bit, accumulate, mll_signedndesd>;
+};
 
 consteval auto instruction_spec::count() noexcept 
     -> std::size_t { return base_offset<set::count>; }
