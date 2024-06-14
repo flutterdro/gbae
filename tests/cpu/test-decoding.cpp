@@ -9,7 +9,7 @@ using namespace fgba;
 using namespace fgba::cpu;
 using enum arm::instruction_spec::set;
 
-TEST_CASE("Decoding arm b, bl, and bx", "[cpu][decoding]") {
+TEST_CASE("Decoding arm b, bl, and bx", "[cpu][arm][decoding]") {
     word const instruction_b  = 0b0110'1010'1010'1000'1110'0010'1101'1001_word;
     word const instruction_bl = 0b0110'1011'1010'1000'1110'0010'1101'1001_word;
     word const instruction_bx = 0b0110'0001'0010'1111'1111'1111'0001'0110_word;
@@ -46,7 +46,7 @@ consteval auto lookup_data_proccessing_id(arm::instruction_spec::set base)
     }
 }
 
-TEMPLATE_TEST_CASE_SIG("Decoding arm and-like data processing", "[cpu][decoding]",
+TEMPLATE_TEST_CASE_SIG("Decoding arm and-like data processing", "[cpu][arm][decoding]",
     ((arm::instruction_spec::set Instr), Instr), 
     (and_), (eor), (orr), (bic), (add), (adc), (sub), (sbc), (rsb), (rsc), (mov), (mvn)
 ) {
@@ -60,155 +60,52 @@ TEMPLATE_TEST_CASE_SIG("Decoding arm and-like data processing", "[cpu][decoding]
     auto const reg_shift  = 0b0000'00'000000'0000'0000'0000'0001'0000_word;
     auto const shift_num  = 0b0000'00'000000'0000'0000'1111'0000'0000_word;
 
-    word instruction = bare_bones | lookup_data_proccessing_id(Instr);
-    SECTION("i and s flags") {
-        auto const none_result = decode({instruction});
-        auto const i_on_result = decode({instruction | i});
-        auto const s_on_result = decode({instruction | s});
-        auto const both_result = decode({instruction | i | s});
+    auto shift_specifier = [=](shifts shift) {
+        auto result = word{0};
+        switch(shift) {
+            case shifts::null:  return lsl;
+            case shifts::lsr32: return lsr;
+            case shifts::asr32: return asr;
+            case shifts::rrx:   return ror;
+            case shifts::lsl:   return lsl | shift_num;
+            case shifts::lsr:   return lsr | shift_num;
+            case shifts::asr:   return asr | shift_num;
+            case shifts::ror:   return ror | shift_num;
+            case shifts::rslsl: return lsl | shift_num | reg_shift;
+            case shifts::rslsr: return lsr | shift_num | reg_shift;
+            case shifts::rsasr: return asr | shift_num | reg_shift;
+            case shifts::rsror: return ror | shift_num | reg_shift;
+            default: std::unreachable();
+        }
+    };
+    auto i_specifier = [=](immediate_operand i_) { return i_ == immediate_operand::on ? i : 0_word; }; //NOLINT 
+    auto s_specifier = [=](s_bit s_) { return s_ == s_bit::on ? s : 0_word; }; //NOLINT 
 
-        auto const none_expected = arm::instruction_spec::construct<Instr>(
-            immediate_operand::off, 
-            shifts::null, 
-            s_bit::off
-        ); 
-        auto const i_on_expected = arm::instruction_spec::construct<Instr>(
-            immediate_operand::on, 
-            shifts::null, 
-            s_bit::off
-        );
-        auto const s_on_expected = arm::instruction_spec::construct<Instr>(
-            immediate_operand::off, 
-            shifts::null, 
-            s_bit::on
-        );
-        auto const both_expected = arm::instruction_spec::construct<Instr>(
-            immediate_operand::on, 
-            shifts::null, 
-            s_bit::on
-        );
+    auto const s_var = GENERATE(s_bit::on, s_bit::off);
 
-        CHECK(none_result.as_index() == none_expected.as_index());
-        CHECK(i_on_result.as_index() == i_on_expected.as_index());
-        CHECK(s_on_result.as_index() == s_on_expected.as_index());
-        CHECK(both_result.as_index() == both_expected.as_index());
+    auto const instruction = bare_bones | lookup_data_proccessing_id(Instr);
+   
+    SECTION("shifts") {
+        auto const shift_var = GENERATE(
+            shifts::null, shifts::lsr32, shifts::asr32, shifts::rrx, 
+            shifts::lsl, shifts::lsr, shifts::asr, shifts::ror, 
+            shifts::rslsl, shifts::rslsr, shifts::rsasr, shifts::rsror
+        );
+        auto const expected = arm::instruction_spec::construct<Instr>(immediate_operand::off, shift_var, s_var);
+        auto const result   = decode({instruction | shift_specifier(shift_var) | s_specifier(s_var)});
+        CHECK(expected.as_index() == result.as_index());
     }
-    SECTION("lsl") {
-        instruction |= lsl;
-        auto const null_result  = decode({instruction});
-        auto const lsl_result   = decode({instruction | shift_num});
-        auto const rslsl_result = decode({instruction | reg_shift | shift_num});
-
-        auto const null_expected = arm::instruction_spec::construct<Instr>(
-            immediate_operand::off, 
-            shifts::null, 
-            s_bit::off
-        );
-        auto const lsl_expected = arm::instruction_spec::construct<Instr>(
-            immediate_operand::off, 
-            shifts::lsl, 
-            s_bit::off
-        );
-
-        auto const rslsl_expected = arm::instruction_spec::construct<Instr>(
-            immediate_operand::off, 
-            shifts::rslsl, 
-            s_bit::off
-        );
-
-        CHECK(null_result.as_index() == null_expected.as_index());
-        CHECK(lsl_result.as_index() == lsl_expected.as_index());
-        CHECK(rslsl_result.as_index() == rslsl_expected.as_index());
-    }
-
-    SECTION("lsr") {
-        instruction |= lsr;
-        auto const lsr32_result  = decode({instruction});
-        auto const lsr_result    = decode({instruction | shift_num});
-        auto const rslsr_result  = decode({instruction | reg_shift | shift_num});
-
-        auto const lsr32_expected = arm::instruction_spec::construct<Instr>(
-            immediate_operand::off, 
-            shifts::lsr32, 
-            s_bit::off
-        );
-        auto const lsr_expected = arm::instruction_spec::construct<Instr>(
-            immediate_operand::off, 
-            shifts::lsr, 
-            s_bit::off
-        );
-
-        auto const rslsr_expected = arm::instruction_spec::construct<Instr>(
-            immediate_operand::off, 
-            shifts::rslsr, 
-            s_bit::off
-        );
-
-        CHECK(lsr32_result.as_index() == lsr32_expected.as_index());
-        CHECK(lsr_result.as_index() == lsr_expected.as_index());
-        CHECK(rslsr_result.as_index() == rslsr_expected.as_index());
-    }
-
-    SECTION("asr") {
-        instruction |= asr;
-        auto const asr32_result  = decode({instruction});
-        auto const asr_result    = decode({instruction | shift_num});
-        auto const rsasr_result  = decode({instruction | reg_shift | shift_num});
-
-        auto const asr32_expected = arm::instruction_spec::construct<Instr>(
-            immediate_operand::off, 
-            shifts::asr32, 
-            s_bit::off
-        );
-        auto const asr_expected = arm::instruction_spec::construct<Instr>(
-            immediate_operand::off, 
-            shifts::asr, 
-            s_bit::off
-        );
-
-        auto const rsasr_expected = arm::instruction_spec::construct<Instr>(
-            immediate_operand::off, 
-            shifts::rsasr, 
-            s_bit::off
-        );
-
-        CHECK(asr32_result.as_index() == asr32_expected.as_index());
-        CHECK(asr_result.as_index() == asr_expected.as_index());
-        CHECK(rsasr_result.as_index() == rsasr_expected.as_index());
-    }
-    SECTION("ror") {
-        instruction |= ror;
-        auto const rrx_result  = decode({instruction});
-        auto const ror_result    = decode({instruction | shift_num});
-        auto const rsror_result  = decode({instruction | reg_shift | shift_num});
-
-        auto const rrx_expected = arm::instruction_spec::construct<Instr>(
-            immediate_operand::off, 
-            shifts::rrx, 
-            s_bit::off
-        );
-        auto const ror_expected = arm::instruction_spec::construct<Instr>(
-            immediate_operand::off, 
-            shifts::ror, 
-            s_bit::off
-        );
-
-        auto const rsror_expected = arm::instruction_spec::construct<Instr>(
-            immediate_operand::off, 
-            shifts::rsror, 
-            s_bit::off
-        );
-
-        CHECK(rrx_result.as_index() == rrx_expected.as_index());
-        CHECK(ror_result.as_index() == ror_expected.as_index());
-        CHECK(rsror_result.as_index() == rsror_expected.as_index());
+    SECTION("i flag") {
+        auto const expected = arm::instruction_spec::construct<Instr>(immediate_operand::on, shifts::null, s_var);
+        auto const result   = decode({instruction | i | s_specifier(s_var)});
+        CHECK(expected.as_index() == result.as_index());
     }
 }
-TEMPLATE_TEST_CASE_SIG("Decoding arm tst-like data processing", "[cpu][decoding]",
+TEMPLATE_TEST_CASE_SIG("Decoding arm tst-like data processing", "[cpu][arm][decoding]",
     ((arm::instruction_spec::set Instr), Instr), 
     (tst), (teq), (cmp), (cmn)
 ) {
-    auto const bare_bones = 0b0110'00'000000'0010'0101'0000'0000'0000_word;
+    auto const bare_bones = 0b0110'00'000000'1111'1111'0000'0000'0000_word;
     auto const i          = 0b0000'00'100000'0000'0000'0000'0000'0000_word;
     auto const s          = 0b0000'00'000001'0000'0000'0000'0000'0000_word;
     auto const lsl        = 0b0000'00'000000'0000'0000'0000'0000'0000_word;
@@ -218,123 +115,43 @@ TEMPLATE_TEST_CASE_SIG("Decoding arm tst-like data processing", "[cpu][decoding]
     auto const reg_shift  = 0b0000'00'000000'0000'0000'0000'0001'0000_word;
     auto const shift_num  = 0b0000'00'000000'0000'0000'1111'0000'0000_word;
 
-    word instruction = bare_bones | lookup_data_proccessing_id(Instr) | s;
+    auto shift_specifier = [=](shifts shift) {
+        auto result = word{0};
+        switch(shift) {
+            case shifts::null:  return lsl;
+            case shifts::lsr32: return lsr;
+            case shifts::asr32: return asr;
+            case shifts::rrx:   return ror;
+            case shifts::lsl:   return lsl | shift_num;
+            case shifts::lsr:   return lsr | shift_num;
+            case shifts::asr:   return asr | shift_num;
+            case shifts::ror:   return ror | shift_num;
+            case shifts::rslsl: return lsl | shift_num | reg_shift;
+            case shifts::rslsr: return lsr | shift_num | reg_shift;
+            case shifts::rsasr: return asr | shift_num | reg_shift;
+            case shifts::rsror: return ror | shift_num | reg_shift;
+            default: std::unreachable();
+        }
+    };
+    auto i_specifier = [=](immediate_operand i_) { return i_ == immediate_operand::on ? i : 0_word; };  //NOLINT
 
-    SECTION("i flag") {
-        auto const none_result = decode({instruction});
-        auto const i_on_result = decode({instruction | i});
-
-        auto const none_expected = arm::instruction_spec::construct<Instr>(
-            immediate_operand::off, 
-            shifts::null 
-        ); 
-        auto const i_on_expected = arm::instruction_spec::construct<Instr>(
-            immediate_operand::on, 
-            shifts::null 
+    auto const instruction = bare_bones | lookup_data_proccessing_id(Instr) | s;
+    
+    SECTION("shifts") {
+        auto const shift_var = GENERATE(
+            shifts::null, shifts::lsr32, shifts::asr32, shifts::rrx, 
+            shifts::lsl, shifts::lsr, shifts::asr, shifts::ror, 
+            shifts::rslsl, shifts::rslsr, shifts::rsasr, shifts::rsror
         );
-
-        CHECK(none_result.as_index() == none_expected.as_index());
-        CHECK(i_on_result.as_index() == i_on_expected.as_index());
+        auto const expected = arm::instruction_spec::construct<Instr>(immediate_operand::off, shift_var);
+        auto const result   = decode({instruction | shift_specifier(shift_var)});
+        CHECK(expected.as_index() == result.as_index());
     }
 
-    SECTION("lsl") {
-        instruction |= lsl;
-        auto const null_result  = decode({instruction});
-        auto const lsl_result   = decode({instruction | shift_num});
-        auto const rslsl_result = decode({instruction | reg_shift | shift_num});
-
-        auto const null_expected = arm::instruction_spec::construct<Instr>(
-            immediate_operand::off, 
-            shifts::null 
-        );
-        auto const lsl_expected = arm::instruction_spec::construct<Instr>(
-            immediate_operand::off, 
-            shifts::lsl 
-        );
-
-        auto const rslsl_expected = arm::instruction_spec::construct<Instr>(
-            immediate_operand::off, 
-            shifts::rslsl 
-        );
-
-        CHECK(null_result.as_index() == null_expected.as_index());
-        CHECK(lsl_result.as_index() == lsl_expected.as_index());
-        CHECK(rslsl_result.as_index() == rslsl_expected.as_index());
-    }
-
-    SECTION("lsr") {
-        instruction |= lsr;
-        auto const lsr32_result  = decode({instruction});
-        auto const lsr_result    = decode({instruction | shift_num});
-        auto const rslsr_result  = decode({instruction | reg_shift | shift_num});
-
-        auto const lsr32_expected = arm::instruction_spec::construct<Instr>(
-            immediate_operand::off, 
-            shifts::lsr32 
-        );
-        auto const lsr_expected = arm::instruction_spec::construct<Instr>(
-            immediate_operand::off, 
-            shifts::lsr 
-        );
-
-        auto const rslsr_expected = arm::instruction_spec::construct<Instr>(
-            immediate_operand::off, 
-            shifts::rslsr 
-        );
-
-        CHECK(lsr32_result.as_index() == lsr32_expected.as_index());
-        CHECK(lsr_result.as_index() == lsr_expected.as_index());
-        CHECK(rslsr_result.as_index() == rslsr_expected.as_index());
-    }
-
-    SECTION("asr") {
-        instruction |= asr;
-        auto const asr32_result  = decode({instruction});
-        auto const asr_result    = decode({instruction | shift_num});
-        auto const rsasr_result  = decode({instruction | reg_shift | shift_num});
-
-        auto const asr32_expected = arm::instruction_spec::construct<Instr>(
-            immediate_operand::off, 
-            shifts::asr32 
-        );
-        auto const asr_expected = arm::instruction_spec::construct<Instr>(
-            immediate_operand::off, 
-            shifts::asr 
-        );
-
-        auto const rsasr_expected = arm::instruction_spec::construct<Instr>(
-            immediate_operand::off, 
-            shifts::rsasr 
-        );
-
-        CHECK(asr32_result.as_index() == asr32_expected.as_index());
-        CHECK(asr_result.as_index() == asr_expected.as_index());
-        CHECK(rsasr_result.as_index() == rsasr_expected.as_index());
-    }
-
-    SECTION("ror") {
-        instruction |= ror;
-        auto const rrx_result  = decode({instruction});
-        auto const ror_result    = decode({instruction | shift_num});
-        auto const rsror_result  = decode({instruction | reg_shift | shift_num});
-
-        auto const rrx_expected = arm::instruction_spec::construct<Instr>(
-            immediate_operand::off, 
-            shifts::rrx 
-        );
-        auto const ror_expected = arm::instruction_spec::construct<Instr>(
-            immediate_operand::off, 
-            shifts::ror 
-        );
-
-        auto const rsror_expected = arm::instruction_spec::construct<Instr>(
-            immediate_operand::off, 
-            shifts::rsror 
-        );
-
-        CHECK(rrx_result.as_index() == rrx_expected.as_index());
-        CHECK(ror_result.as_index() == ror_expected.as_index());
-        CHECK(rsror_result.as_index() == rsror_expected.as_index());
+   SECTION("immediate operand") {
+        auto const expected = arm::instruction_spec::construct<Instr>(immediate_operand::on, shifts::null);
+        auto const result   = decode({instruction | i});
+        CHECK(expected.as_index() == result.as_index());
     }
 
 }
@@ -344,59 +161,33 @@ TEST_CASE("Decoding arm msr", "[cpu][decoding][arm]") {
     auto const spsr     = 0b0000'00'0'00'1'00000'0'0000'00000000'0000_word;
     auto const imop     = 0b0000'00'1'00'0'00000'0'0000'00000000'0000_word;
     auto const whole    = 0b0000'00'0'00'0'00000'1'0000'00000000'0000_word;
-    SECTION("whole psr transfer") {
-        auto const cpsr_result   = decode({skeleton | whole});
-        auto const cpsr_expected = arm::instruction_spec::construct<msr>(
-            immediate_operand::off,
-            mask::off,
-            which_psr::cpsr
-        );
-        auto const spsr_result   = decode({skeleton | whole | spsr});
-        auto const spsr_expected = arm::instruction_spec::construct<msr>(
-            immediate_operand::off,
-            mask::off,
-            which_psr::spsr
-        );
 
-        CHECK(cpsr_result.as_index() == cpsr_expected.as_index());
-        CHECK(spsr_result.as_index() == spsr_expected.as_index());
+    auto const psr_specifier = [=](which_psr psr) { return psr == which_psr::spsr ? spsr : 0_word; };
+    auto const i_specifier   = [=](immediate_operand i) { return i == immediate_operand::on ? imop : 0_word; };
+
+    auto psr_var = GENERATE(which_psr::spsr, which_psr::cpsr);
+
+    SECTION("whole psr transfer") {
+        auto const result   = decode({skeleton | whole | psr_specifier(psr_var)});
+        auto const expected = arm::instruction_spec::construct<msr>(
+            immediate_operand::off,
+            mask::off,
+            psr_var
+        );
+        CHECK(result.as_index() == expected.as_index());
     }
     SECTION("flag bits only") {
-        SECTION("immediate_operand") {
-            auto const imop_result   = decode({skeleton | imop});
-            auto const imop_expected = arm::instruction_spec::construct<msr>(
-                immediate_operand::on,
-                mask::on,
-                which_psr::cpsr
-            );
-            auto const noimop_result   = decode({skeleton});
-            auto const noimop_expected = arm::instruction_spec::construct<msr>(
-                immediate_operand::off,
-                mask::on,
-                which_psr::cpsr
-            );
-            CHECK(imop_result.as_index() == imop_expected.as_index());
-            CHECK(noimop_result.as_index() == noimop_expected.as_index());
-        }
-        SECTION("cpsr and spsr") {
-            auto const cpsr_result   = decode({skeleton});
-            auto const cpsr_expected = arm::instruction_spec::construct<msr>(
-                immediate_operand::off,
-                mask::on,
-                which_psr::cpsr
-            );
-            auto const spsr_result   = decode({skeleton | spsr});
-            auto const spsr_expected = arm::instruction_spec::construct<msr>(
-                immediate_operand::off,
-                mask::on,
-                which_psr::spsr
-            );
-            CHECK(cpsr_result.as_index() == cpsr_expected.as_index());
-            CHECK(spsr_result.as_index() == spsr_expected.as_index());
-        }
+        auto const i_var = GENERATE(immediate_operand::on, immediate_operand::off);
+
+        auto const result   = decode({skeleton | psr_specifier(psr_var) | i_specifier(i_var)});
+        auto const expected = arm::instruction_spec::construct<msr>(
+            i_var,
+            mask::on,
+            psr_var
+        );
+        CHECK(result.as_index() == expected.as_index());
     }
 }
-// static_assert(arm::instruction_spec{375}.base());
 
 TEST_CASE("Decoding arm mrs", "[cpu][decoding][arm]") {
     auto const skeleton  = 0b0100'00010'0'001111'0101'0000'0000'0000_word;
@@ -421,32 +212,16 @@ TEST_CASE("Decoding arm mul", "[cpu][decoding][arm]") {
     auto const a        = 0b0000'000000'1'0'0000'0000'0000'0000'0000_word;
     auto const s        = 0b0000'000000'0'1'0000'0000'0000'0000'0000_word;
 
-    auto const result_none = decode({skeleton});
-    auto const result_a    = decode({skeleton | a});
-    auto const result_s    = decode({skeleton | s});
-    auto const result_as   = decode({skeleton | a | s});
+    auto a_d    = [=](accumulate a_) { return a_ == accumulate::on ? a : 0_word; };  //NOLINT
+    auto s_d    = [=](s_bit s_) { return s_ == s_bit::on ? s : 0_word; };            //NOLINT
 
-    auto const expected_none = arm::instruction_spec::construct<mul>(
-        s_bit::off,
-        accumulate::off
-    );
-    auto const expected_a = arm::instruction_spec::construct<mul>(
-        s_bit::off,
-        accumulate::on
-    );
-    auto const expected_s = arm::instruction_spec::construct<mul>(
-        s_bit::on,
-        accumulate::off
-    );
-    auto const expected_as = arm::instruction_spec::construct<mul>(
-        s_bit::on,
-        accumulate::on
-    );
+    auto s_var    = GENERATE(s_bit::on, s_bit::off);
+    auto a_var    = GENERATE(accumulate::on, accumulate::off);
 
-    CHECK(result_none.as_index() == expected_none.as_index());
-    CHECK(result_a.as_index() == expected_a.as_index());
-    CHECK(result_s.as_index() == expected_s.as_index());
-    CHECK(result_as.as_index() == expected_as.as_index());
+    auto const expected = arm::instruction_spec::construct<mul>(s_var, a_var);
+    auto const result   = decode({skeleton | s_d(s_var) | a_d(a_var)});
+
+    CHECK(result.as_index() == expected.as_index());
 }
 TEST_CASE("Decoding arm mll", "[cpu][decoding][arm]") {
     auto const skeleton = 0b1010'00001'0'0'0'1111'1111'0000'1001'1011_word;
