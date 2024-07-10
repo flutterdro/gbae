@@ -1,13 +1,20 @@
 #ifndef OP_CODES_HPP_
 #define OP_CODES_HPP_
 
+#include "boost/mp11/algorithm.hpp"
+#include "boost/mp11/detail/mp_list.hpp"
+#include "boost/mp11/list.hpp"
 #include "emulator/cpudefines.hpp"
 #include "fgba-defines.hpp"
 #include "utility/fatexception.hpp"
 #include "emulator/cpu/instruction-impl/instruction-flags.hpp"
+#include <array>
 #include <cstddef>
+#include <iterator>
 #include <type_traits>
+#include <algorithm>
 #include <utility>
+#include <boost/mp11.hpp>
 
 
 // This code is a mess which I hope would be nice to use 
@@ -63,16 +70,22 @@ public:
     [[nodiscard]]constexpr auto base() const noexcept 
         -> set;
     template<set Instr>
-    [[nodiscard]]constexpr auto switches() const noexcept
-        -> flag_bundle_t<Instr>;
+    [[nodiscard]]constexpr auto switches() const noexcept;
     [[nodiscard]]static consteval auto count() noexcept 
         -> std::size_t;
 private:
     template<set>
-    [[nodiscard]]static constexpr auto relative_offset(auto...)
-        -> std::size_t;
+    [[nodiscard]]static constexpr auto relative_offset(auto...);
     template<set>
-    inline static constexpr std::size_t max_relative_offset = 1;
+    [[nodiscard]]static constexpr auto relative_offset(immediate_operand, shifts, s_bit);
+    template<set>
+    [[nodiscard]]static constexpr auto relative_offset(immediate_operand, shifts);
+    template<set Instr>
+    static constexpr auto proxy = [](auto... switches) { return relative_offset<Instr>(switches...); };
+    template<set Instr>
+    using expression_t = decltype(std::apply(proxy<Instr>, std::declval<flag_bundle_t<Instr>>()));
+    template<set Instr>
+    inline static constexpr std::size_t max_relative_offset = expression_t<Instr>::limit();
     template<set Instr>
     inline static constexpr std::size_t max_absolute_offset = 
         max_absolute_offset<static_cast<set>(std::to_underlying(Instr) - 1)> + max_relative_offset<Instr>;
@@ -96,20 +109,200 @@ public:
 private:
   set m_instruction;
 };
-[[nodiscard]]auto mask_for(arm::instruction_spec) noexcept -> u32;
+[[nodiscard]]auto mask_for(arm::instruction_spec) noexcept -> word;
 [[nodiscard]]auto mask_for(thumb_instruction) noexcept -> u16;
-[[nodiscard]]auto opcode_for(arm::instruction_spec) noexcept -> u32;
+[[nodiscard]]auto opcode_for(arm::instruction_spec) noexcept -> word;
 [[nodiscard]]auto opcode_for(thumb_instruction) noexcept -> u16;
 [[nodiscard]]auto decode(arm::instruction) noexcept -> arm::instruction_spec;
 [[nodiscard]]auto decode(thumb::instruction) noexcept -> thumb_instruction;
 
+
+
+namespace arm {
 namespace detail {
 template<typename... Enums>
 inline constexpr u32 offset = ((std::to_underlying(Enums::count)) * ...);
 } // namespace detail
+namespace option_collapsing {
+using namespace boost::mp11;
+template<auto Val>
+using constant = std::integral_constant<decltype(Val), Val>;
 
-namespace arm {
+template<typename T>
+concept limited = requires(T&& val) { 
+    {T::limit()}     -> std::same_as<std::size_t>; 
+    {val.collapse()} -> std::same_as<std::size_t>;
+    T::decompose(std::size_t{});
+};
 
+template<auto... Vals>
+struct sparse {
+    using types = mp_list<decltype(Vals)...>;
+    static_assert(mp_same<decltype(Vals)...>::value);
+    using option_list = mp_list<mp_first<types>>;
+    using options     = mp_rename<option_list, std::tuple>;
+    static constexpr auto limit = constant<sizeof...(Vals)>{};
+    static constexpr std::array vals{Vals...};
+    static constexpr auto decompose(std::size_t composed) noexcept 
+        -> options { return {vals[composed]}; }
+    constexpr auto collapse() const noexcept {
+        return std::ranges::distance(vals.begin(), std::ranges::find(vals, m_value));
+    }
+    mp_first<types> m_value;
+};
+template<typename T, typename Limit = constant<T::count>>
+struct limiter {
+    using option_list = mp_list<T>;
+    using options      = std::tuple<T>;
+    static constexpr auto decompose(std::size_t composed) noexcept
+        -> options {
+        return {static_cast<T>(composed)};
+    }
+    explicit(false) constexpr limiter(T value) : m_value{value} {}
+    static constexpr auto limit = constant<static_cast<std::size_t>(Limit{}())>{};
+    constexpr auto collapse() const noexcept {
+        return static_cast<std::size_t>(m_value);
+    }
+    T m_value;
+};
+template<auto E>
+using boundary = limiter<decltype(E), constant<E>>;
+template<typename T>
+using wrap_or_t = mp_eval_if_c<limited<T>, T, limiter, T>;
+
+inline constexpr struct dummy_t {
+    using option_list = mp_list<>;
+    using options     = std::tuple<>;
+    static constexpr auto decompose(std::size_t) noexcept { return options{}; }
+    static constexpr auto limit = constant<std::size_t{1}>{};
+    constexpr auto collapse() const noexcept { return 0uz; }
+} dummy;
+
+template<typename EnumConstant, typename T>
+    requires limited<T>
+struct match : T {
+    static constexpr auto enum_value = EnumConstant{};
+    using enum_type                  = typename EnumConstant::value_type;
+    constexpr match(EnumConstant, T option) noexcept 
+        : T{option} {}
+};
+template<typename E, typename T>
+match(E, T) -> match<E, wrap_or_t<T>>;
+
+template<typename... Ts>
+struct matched_bundle {
+    constexpr matched_bundle(Ts... elems) noexcept 
+        : m_elems{elems...} {}
+    std::tuple<Ts...> m_elems;
+};
+
+template<typename T>
+concept always_false = false;
+template<typename T1, typename T2>
+struct dependent {
+    static_assert(always_false<T1>, "No bueno");
+};
+template<typename T1, typename T2>
+dependent(T1, T2) -> dependent<wrap_or_t<T1>, T2>;
+
+template<typename T, typename... Ts>
+    requires limited<T>
+struct dependent<T, matched_bundle<Ts...>> {
+    static_assert(mp_same<typename Ts::enum_type...>::value, 
+        "All types in the matcher must be the same");
+    using unique_matchers = mp_size<mp_unique<mp_list<decltype(Ts::enum_value)...>>>;
+    static_assert(unique_matchers::value == T::limit(), 
+        "Matching must be exhaustive");
+
+    using option_list = mp_set_union<typename T::option_list, typename Ts::option_list...>;
+    using options     = mp_rename<option_list, std::tuple>;
+
+    static constexpr auto limit = constant<(Ts::limit() + ...)>{};
+    static constexpr auto decompose(std::size_t composed) noexcept {
+        auto result = options{};
+        ([&]<typename U> -> bool {
+            if (composed >= U::limit()) {
+                composed -= U::limit();
+                return true;
+            } else {
+                std::get<0>(result) = U::enum_value();
+                auto options_that_matter = U::decompose(composed);
+                [&]<typename... Us>(std::tuple<Us...> significant_options){
+                    ((std::get<Us>(result) = std::get<Us>(significant_options)), ...);
+                }(options_that_matter);
+                return false;
+            }
+        }.template operator()<Ts>() and ...);
+
+        return result;
+    }
+
+    constexpr auto collapse() const noexcept 
+        -> std::size_t {
+        auto result = std::size_t{};
+        ([&]<typename U> -> bool {
+            if (m_value.m_value == U::enum_value()) {
+                result += std::get<U>(m_bundle.m_elems).collapse();
+                return false;
+            } else {
+                result += U::limit();
+                return true;
+            }
+        }.template operator()<Ts>() and ...);
+
+        return result;
+    } 
+    T m_value;
+    matched_bundle<Ts...> m_bundle;
+};
+
+template<typename T1, typename T2>
+    requires (limited<T1> && limited<T2>)
+struct independent {
+    static constexpr auto limit = constant<T1::limit() * T2::limit()>{};
+    using option_list = mp_append<typename T1::option_list, typename T2::option_list>;
+    using options     = mp_rename<option_list, std::tuple>;
+    static constexpr auto decompose(std::size_t composed) noexcept {
+        auto lhs = T1::decompose(composed % T1::limit());
+        auto rhs = T2::decompose(composed / T1::limit());
+        return std::tuple_cat(lhs, rhs);
+    }
+    constexpr auto collapse() const noexcept
+        -> std::size_t { 
+        return m_value1.limit() * m_value2.collapse() + m_value1.collapse(); 
+    }
+
+    T1 m_value1;
+    T2 m_value2;
+};
+template<typename T1, typename T2>
+independent(T1, T2) -> independent<wrap_or_t<T1>, wrap_or_t<T2>>;
+
+template<typename EnumConst, typename T>
+constexpr auto operator|(EnumConst e, T option) noexcept {
+    return match{e, option};
+}
+template<typename T1, typename T2>
+constexpr auto operator*(T1 switch1, T2 switch2) noexcept {
+    return independent{switch1, switch2};
+}
+template<typename T, typename... Ts>
+constexpr auto operator%(T option, matched_bundle<Ts...> option_bundle) noexcept {
+    return dependent{option, option_bundle};
+}
+template<typename T1, typename T2>
+constexpr auto operator,(T1 option1, T2 option2) noexcept {
+    return matched_bundle{option1, option2};
+}
+template<typename T, typename... Ts>
+constexpr auto operator,(matched_bundle<Ts...> option_bundle, T option) noexcept {
+    return [&]<std::size_t... Is>(std::index_sequence<Is...>){
+        return matched_bundle{std::get<Is>(option_bundle.m_elems)..., option};
+    }(std::index_sequence_for<Ts...>{});
+}
+template<typename T, typename... Ts>
+constexpr auto operator,(T option, matched_bundle<Ts...> option_bundle) = delete;
+}
 enum class instruction_spec::set : u32 {
     b = 0, bx, bl,
     and_, //NOLINT
@@ -132,8 +325,13 @@ enum class instruction_spec::set : u32 {
     mrs,
     mul,
     mll,
-    str,
     ldr,
+    str,
+    stm,
+    ldm,
+    swp,
+    swi,
+    coprocessor_placeholder,
     undefined,
     
     count,
@@ -146,7 +344,11 @@ constexpr auto instruction_spec::construct(auto... switches)
         std::is_same_v<std::tuple<decltype(switches)...>, flag_bundle_t<Instr>>,
         "Wrong instruction flags or their order is incorrect"
     );
-    return instruction_spec{base_offset<Instr> + relative_offset<Instr>(switches...)};
+    return instruction_spec{base_offset<Instr> + relative_offset<Instr>(switches...).collapse()};
+}
+template<instruction_spec::set Instr>
+constexpr auto instruction_spec::switches() const noexcept {
+    return expression_t<Instr>::decompose(m_instruction_hash - base_offset<Instr>);
 }
 
 template<>
@@ -155,100 +357,42 @@ template<>
 inline constexpr std::size_t instruction_spec::base_offset<instruction_spec::set::b> = 0;
 template<>
 struct instruction_spec::flag_bundle<instruction_spec::set::b> { using type = std::tuple<>; };
-template<>
-constexpr auto instruction_spec::switches<instruction_spec::set::b>() const noexcept
-    -> instruction_spec::flag_bundle_t<instruction_spec::set::b> { return {}; }
 
 template<>
-constexpr auto instruction_spec::relative_offset<instruction_spec::set::b>()
-    -> std::size_t { return 0; }
+constexpr auto instruction_spec::relative_offset<instruction_spec::set::b>() {
+    using namespace option_collapsing;
+    return dummy; 
+}
 template<>
-inline constexpr std::size_t instruction_spec::max_relative_offset<instruction_spec::set::b> = 1;
-template<>
-constexpr auto instruction_spec::relative_offset<instruction_spec::set::bl>()
-    -> std::size_t { return 0; }
-template<>
-inline constexpr std::size_t instruction_spec::max_relative_offset<instruction_spec::set::bl> = 1;
+constexpr auto instruction_spec::relative_offset<instruction_spec::set::bl>() { 
+    using namespace option_collapsing;
+    return dummy; 
+}
 template<>
 struct instruction_spec::flag_bundle<instruction_spec::set::bl> { using type = std::tuple<>; };
 template<>
-constexpr auto instruction_spec::switches<instruction_spec::set::bl>() const noexcept
-    -> instruction_spec::flag_bundle_t<instruction_spec::set::bl> { return {}; }
-template<>
-constexpr auto instruction_spec::relative_offset<instruction_spec::set::bx>()
-    -> std::size_t { return 0; }
-template<>
-inline constexpr std::size_t instruction_spec::max_relative_offset<instruction_spec::set::bx> = 1;
+constexpr auto instruction_spec::relative_offset<instruction_spec::set::bx>() { 
+    using namespace option_collapsing;
+    return dummy; 
+}
 template<>
 struct instruction_spec::flag_bundle<instruction_spec::set::bx> { using type = std::tuple<>; };
-template<>
-constexpr auto instruction_spec::switches<instruction_spec::set::bx>() const noexcept
-    -> instruction_spec::flag_bundle_t<instruction_spec::set::bx> { return {}; }
-
-template<>
-constexpr auto instruction_spec::relative_offset<instruction_spec::set::and_>(
+template<instruction_spec::set Instr>
+constexpr auto instruction_spec::relative_offset(
     immediate_operand im_op,
     shifts shift,
     s_bit s
-) -> std::size_t {
-    std::size_t s_bit_instructions_offset = 
-        static_cast<std::size_t>(std::to_underlying(s)) *
-        (detail::offset<shifts> + 1);
-    std::size_t shift_or_im_op_offset = 
-        im_op == immediate_operand::on ?
-            detail::offset<shifts> :
-            std::to_underlying(shift);
-    return s_bit_instructions_offset + shift_or_im_op_offset;
+)  {
+    using namespace option_collapsing;
+    return s * (im_op % (
+        constant<immediate_operand::on>{} | dummy,
+        constant<immediate_operand::off>{}| shift
+    ));
 }
-template<>
-inline constexpr std::size_t instruction_spec::max_relative_offset<instruction_spec::set::and_> = 
-    relative_offset<set::and_>(immediate_operand::on, shifts::null, s_bit::on) + 1;
 
 #define FGBA_EXTRACT_SWITCHES_AND_LIKE(Instr)\
 template<>\
-struct instruction_spec::flag_bundle<instruction_spec::set::Instr> { using type = std::tuple<immediate_operand, shifts, s_bit>; };\
-template<>\
-constexpr auto instruction_spec::switches<instruction_spec::set::Instr>() const noexcept\
-    -> instruction_spec::flag_bundle_t<instruction_spec::set::Instr> {\
-    auto relative = m_instruction_hash - base_offset<set::Instr>;\
-    auto s_bit_ret = static_cast<s_bit>(relative / (detail::offset<shifts> + 1));\
-    relative %= detail::offset<shifts> + 1;\
-    auto immediate_operand_ret = static_cast<immediate_operand>(\
-        relative == detail::offset<shifts>\
-    );\
-    if (immediate_operand_ret == immediate_operand::on) {\
-        return {immediate_operand_ret, shifts::null, s_bit_ret};\
-    } else {\
-        return {immediate_operand_ret, static_cast<shifts>(relative), s_bit_ret};\
-    }\
-}
-    
-
-    
-#define FGBA_SETUP_OFFSETS(instr)\
-template<>\
-constexpr auto instruction_spec::relative_offset<instruction_spec::set::instr>(\
-    immediate_operand im_op,\
-    shifts shift,\
-    s_bit s\
-) -> std::size_t { return relative_offset<set::and_>(im_op, shift, s); }\
-template<>\
-inline constexpr std::size_t instruction_spec::max_relative_offset<instruction_spec::set::instr> =\
-    relative_offset<set::instr>(immediate_operand::on, shifts::null, s_bit::on) + 1;
-
-FGBA_SETUP_OFFSETS(orr)
-FGBA_SETUP_OFFSETS(eor)
-FGBA_SETUP_OFFSETS(bic)
-FGBA_SETUP_OFFSETS(add)
-FGBA_SETUP_OFFSETS(adc)
-FGBA_SETUP_OFFSETS(sub)
-FGBA_SETUP_OFFSETS(sbc)
-FGBA_SETUP_OFFSETS(rsb)
-FGBA_SETUP_OFFSETS(rsc)
-FGBA_SETUP_OFFSETS(mov)
-FGBA_SETUP_OFFSETS(mvn)
-
-#undef FGBA_SETUP_OFFSETS
+struct instruction_spec::flag_bundle<instruction_spec::set::Instr> { using type = std::tuple<immediate_operand, shifts, s_bit>; };
 
 FGBA_EXTRACT_SWITCHES_AND_LIKE(and_)
 FGBA_EXTRACT_SWITCHES_AND_LIKE(orr)
@@ -265,51 +409,22 @@ FGBA_EXTRACT_SWITCHES_AND_LIKE(mvn)
 
 #undef FGBA_EXTRACT_SWITCHES_AND_LIKE
 
-template<>
-constexpr auto instruction_spec::relative_offset<instruction_spec::set::tst>(
+template<instruction_spec::set Instr>
+constexpr auto instruction_spec::relative_offset(
     immediate_operand im_op,
     shifts shift
-) -> std::size_t {
-    return im_op == immediate_operand::on ? 
-        detail::offset<shifts> :
-        std::to_underlying(shift);
+) {
+    using namespace option_collapsing;
+    return im_op % (
+        constant<immediate_operand::on>{} |dummy,
+        constant<immediate_operand::off>{}|shift
+    );
 }
-template<>
-inline constexpr std::size_t instruction_spec::max_relative_offset<instruction_spec::set::tst> =
-    relative_offset<set::tst>(immediate_operand::on, shifts::null) + 1;
 
 #define FGBA_EXTRACT_SWITCHES_TST_LIKE(Instr)\
 template<>\
 struct instruction_spec::flag_bundle<instruction_spec::set::Instr> { using type = std::tuple<immediate_operand, shifts>; };\
-template<>\
-constexpr auto instruction_spec::switches<instruction_spec::set::Instr>() const noexcept\
-    -> instruction_spec::flag_bundle_t<instruction_spec::set::Instr> {\
-    auto relative = m_instruction_hash - base_offset<set::Instr>;\
-    auto immediate_operand_ret = static_cast<immediate_operand>(\
-        relative == detail::offset<shifts>\
-    );\
-    if (immediate_operand_ret == immediate_operand::on) {\
-        return {immediate_operand_ret, shifts::null};\
-    } else {\
-        return {immediate_operand_ret, static_cast<shifts>(relative)};\
-    }\
-}
 
-#define FGBA_SETUP_OFFSETS(instr)\
-template<>\
-constexpr auto instruction_spec::relative_offset<instruction_spec::set::instr>(\
-    immediate_operand im_op,\
-    shifts shift\
-) -> std::size_t { return relative_offset<set::tst>(im_op, shift); }\
-template<>\
-inline constexpr std::size_t instruction_spec::max_relative_offset<instruction_spec::set::instr> =\
-    relative_offset<set::instr>(immediate_operand::on, shifts::null) + 1;
-
-FGBA_SETUP_OFFSETS(teq)
-FGBA_SETUP_OFFSETS(cmp)
-FGBA_SETUP_OFFSETS(cmn)
-
-#undef FGBA_SETUP_OFFSETS
 
 FGBA_EXTRACT_SWITCHES_TST_LIKE(tst)
 FGBA_EXTRACT_SWITCHES_TST_LIKE(teq)
@@ -320,10 +435,10 @@ FGBA_EXTRACT_SWITCHES_TST_LIKE(cmn)
 
 
 template<>
-constexpr auto instruction_spec::relative_offset<instruction_spec::set::mrs>(which_psr which_psr)
-    -> std::size_t { return std::to_underlying(which_psr); }
-template<>
-inline constexpr std::size_t instruction_spec::max_relative_offset<instruction_spec::set::mrs> = 2;
+constexpr auto instruction_spec::relative_offset<instruction_spec::set::mrs>(which_psr which_psr) { 
+    using namespace option_collapsing;
+    return limiter{which_psr}; 
+}
 template<>
 struct instruction_spec::flag_bundle<instruction_spec::set::mrs> {
     using type = std::tuple<which_psr>;
@@ -333,20 +448,15 @@ struct instruction_spec::flag_bundle<instruction_spec::set::mrs> {
 template<>
 constexpr auto instruction_spec::relative_offset<instruction_spec::set::msr>(
     immediate_operand im_op,
-    mask mask,
     which_psr which_psr
-) -> std::size_t {
-    auto psr_offset = std::to_underlying(which_psr) * 3;
-    auto mask_offset = mask == mask::on ? 
-        std::to_underlying(im_op) :
-        2;
-    return psr_offset + mask_offset; //NOLINT
+)  {
+
+    using namespace option_collapsing;
+    return which_psr * im_op;
 }
 template<>
-inline constexpr std::size_t instruction_spec::max_relative_offset<instruction_spec::set::msr> = 6; 
-template<>
 struct instruction_spec::flag_bundle<instruction_spec::set::msr> {
-    using type = std::tuple<immediate_operand, mask, which_psr>;
+    using type = std::tuple<immediate_operand, which_psr>;
 };
 
 
@@ -354,11 +464,10 @@ template<>
 constexpr auto instruction_spec::relative_offset<instruction_spec::set::mul>(
     s_bit s,
     accumulate a
-) -> std::size_t {
-    return detail::offset<s_bit> * std::to_underlying(a) + std::to_underlying(s); //NOLINT
+) {
+    using namespace option_collapsing;
+    return s * a; //NOLINT
 }
-template<>
-inline constexpr std::size_t instruction_spec::max_relative_offset<instruction_spec::set::mul> = 4;
 template<>
 struct instruction_spec::flag_bundle<instruction_spec::set::mul> {
     using type = std::tuple<s_bit, accumulate>;
@@ -370,15 +479,128 @@ constexpr auto instruction_spec::relative_offset<instruction_spec::set::mll>(
     s_bit s,
     accumulate a,
     mll_signedndesd sign
-) -> std::size_t {
-    auto tu = [](auto val) -> std::size_t { return std::to_underlying(val); }; //NOLINT
-    return detail::offset<s_bit, accumulate> * tu(sign) + detail::offset<s_bit> * tu(a) + tu(s);
+) {
+    using namespace option_collapsing;
+    return s * a * sign;
 }
-template<>
-inline constexpr auto instruction_spec::max_relative_offset<instruction_spec::set::mll> = 8;
 template<>
 struct instruction_spec::flag_bundle<instruction_spec::set::mll> {
     using type = std::tuple<s_bit, accumulate, mll_signedndesd>;
+};
+template<>
+constexpr auto instruction_spec::relative_offset<instruction_spec::set::str>(
+    immediate_operand immediate_operand, shifts shift, 
+    direction direction, indexing indexing,
+    write_back write_back, data_size data_size
+) {
+    using namespace option_collapsing;
+    return (indexing * direction * write_back) * (data_size % (
+        constant<data_size::word>{} | (immediate_operand % ( 
+            constant<immediate_operand::on>{} |dummy,
+            constant<immediate_operand::off>{}|boundary<shifts::rslsl>{shift}
+        )),
+        constant<data_size::byte>{} | (immediate_operand % ( 
+            constant<immediate_operand::on>{} |dummy,
+            constant<immediate_operand::off>{}|boundary<shifts::rslsl>{shift}
+        )),
+        constant<data_size::hword>{}| immediate_operand
+    ));
+}
+template<>
+struct instruction_spec::flag_bundle<instruction_spec::set::str> {
+    using type = std::tuple<immediate_operand, shifts, direction, indexing, write_back, data_size>;
+};
+template<>
+constexpr auto instruction_spec::relative_offset<instruction_spec::set::ldr> (
+    immediate_operand immediate_operand, shifts shift, 
+    direction direction, indexing indexing, write_back write_back, 
+    data_size data_size, mll_signedndesd sign
+) {
+    using namespace option_collapsing;
+    return (indexing * direction * write_back) * (data_size % (
+        constant<data_size::word>{} |(immediate_operand % (
+            constant<immediate_operand::on>{} |dummy,
+            constant<immediate_operand::off>{}|boundary<shifts::rslsl>{shift}
+        )),
+        constant<data_size::hword>{}|immediate_operand * sign,
+        constant<data_size::byte> {}|(sign % (
+            constant<mll_signedndesd::unsigned_>{}|(immediate_operand % (
+                constant<immediate_operand::on>{} |dummy,
+                constant<immediate_operand::off>{}|boundary<shifts::rslsl>{shift}
+            )),
+            constant<mll_signedndesd::signed_>{}  | immediate_operand
+        ))
+    ));
+}
+template<>
+struct instruction_spec::flag_bundle<instruction_spec::set::ldr> {
+    using type = std::tuple<
+    immediate_operand, shifts, 
+    direction, indexing, write_back, 
+    data_size, mll_signedndesd>;
+};
+
+template<>
+constexpr auto instruction_spec::relative_offset<instruction_spec::set::stm>(
+    s_bit s, direction dir, write_back wb, indexing ind
+) {
+    using namespace option_collapsing;
+    return s * dir * wb * ind;
+}
+template<>
+struct instruction_spec::flag_bundle<instruction_spec::set::stm> {
+    using type = std::tuple<s_bit, direction, write_back, indexing>; 
+};
+template<>
+constexpr auto instruction_spec::relative_offset<instruction_spec::set::ldm>(
+    s_bit s, direction dir, write_back wb, indexing ind
+) {
+    using namespace option_collapsing;
+    return s * dir * wb * ind;
+}
+template<>
+struct instruction_spec::flag_bundle<instruction_spec::set::ldm> {
+    using type = std::tuple<s_bit, direction, write_back, indexing>; 
+};
+
+template<>
+constexpr auto instruction_spec::relative_offset<instruction_spec::set::swp>(data_size ds) {
+    using namespace option_collapsing;
+    return sparse<data_size::byte, data_size::word>{ds};
+}
+template<>
+struct instruction_spec::flag_bundle<instruction_spec::set::swp> {
+    using type = std::tuple<data_size>;
+};
+
+template<>
+constexpr auto instruction_spec::relative_offset<instruction_spec::set::swi>() {
+    using namespace option_collapsing;
+    return dummy;
+}
+template<>
+struct instruction_spec::flag_bundle<instruction_spec::set::swi> {
+    using type = std::tuple<>;
+};
+
+template<>
+constexpr auto instruction_spec::relative_offset<instruction_spec::set::undefined>() {
+    using namespace option_collapsing;
+    return dummy;
+}
+template<>
+struct instruction_spec::flag_bundle<instruction_spec::set::undefined> {
+    using type = std::tuple<>;
+};
+
+template<>
+constexpr auto instruction_spec::relative_offset<instruction_spec::set::coprocessor_placeholder>() {
+    using namespace option_collapsing;
+    return dummy;
+}
+template<>
+struct instruction_spec::flag_bundle<instruction_spec::set::coprocessor_placeholder> {
+    using type = std::tuple<>;
 };
 
 consteval auto instruction_spec::count() noexcept 
@@ -387,7 +609,6 @@ consteval auto instruction_spec::count() noexcept
 constexpr auto instruction_spec::as_index() const noexcept 
     -> std::size_t { return m_instruction_hash; }
 
-static_assert(instruction_spec::construct<instruction_spec::set::orr>(immediate_operand::off, shifts::null, s_bit::off).as_index() == 29);
 
 constexpr auto instruction_spec::base() const noexcept 
     -> set {

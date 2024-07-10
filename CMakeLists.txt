@@ -55,6 +55,7 @@ target_link_libraries(fgba_exe
         glm
         imgui
         glad
+        boost_mp11
 )
 add_subdirectory(tests)
 

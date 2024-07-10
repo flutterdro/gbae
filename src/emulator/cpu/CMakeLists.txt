@@ -11,4 +11,8 @@ set(FGBA_CPU_SOURCES
 
 target_sources(fgba_cpu PUBLIC ${FGBA_CPU_SOURCES})
 target_include_directories(fgba_cpu PRIVATE ${CMAKE_SOURCE_DIR}/include)
-target_link_libraries(fgba_cpu PUBLIC fmt::fmt)
+target_link_libraries(fgba_cpu 
+    PUBLIC
+        fmt::fmt
+        Boost::mp11
+)

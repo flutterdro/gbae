@@ -1,7 +1,6 @@
 #ifndef MEMORY_PRIMITIVES_HPP_
 #define MEMORY_PRIMITIVES_HPP_
 #include "emulator/cpudefines.hpp"
-#include "spdlog/spdlog.h"
 #include <algorithm>
 #include <concepts>
 #include "utility/fatexception.hpp"

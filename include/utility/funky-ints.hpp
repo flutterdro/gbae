@@ -190,6 +190,10 @@ struct basic_bitset {
     explicit constexpr operator basic_bitset<OtherBaseInt>() const noexcept {
         return {static_cast<OtherBaseInt>(value)}; 
     }
+    template<std::integral OtherInt>
+    explicit constexpr operator OtherInt() const noexcept {
+        return static_cast<OtherInt>(value); 
+    }
     template<typename T>
     [[nodiscard]]constexpr auto as() const noexcept
         -> T { return static_cast<T>(*this); }

@@ -75,9 +75,9 @@ enum class shifts : unsigned {
 };
 
 enum class data_size {
-    byte,
-    hword,
     word,
+    hword,
+    byte,
 
     count,
 };

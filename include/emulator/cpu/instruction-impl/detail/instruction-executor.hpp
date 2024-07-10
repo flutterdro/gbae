@@ -57,7 +57,7 @@ struct instruction_executor {
     template<immediate_operand, shifts, direction, indexing, write_back, data_size, mll_signedndesd>
     static auto data_load(arm7tdmi&, instruction)
         -> void;
-    template<direction, indexing, write_back>
+    template<s_bit, direction, indexing, write_back>
     static auto block_data_store(arm7tdmi&, instruction)
         -> void;
 };
@@ -388,7 +388,7 @@ auto instruction_executor::data_load(arm7tdmi& cpu, instruction const instructio
 }
 
 
-template<direction Dir, indexing Ind, write_back Wb>
+template<s_bit S, direction Dir, indexing Ind, write_back Wb>
 auto instruction_executor::block_data_store(arm7tdmi& cpu, instruction const instruction)
     -> void {
     auto const r_base  = instruction[19, 16].value;

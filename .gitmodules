@@ -16,3 +16,6 @@
 [submodule "deps/imgui"]
 	path = deps/imgui
 	url = https://github.com/ocornut/imgui.git
+[submodule "deps/mp11"]
+	path = deps/mp11
+	url = https://github.com/boostorg/mp11.git

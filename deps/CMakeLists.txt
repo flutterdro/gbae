@@ -6,6 +6,7 @@ add_subdirectory(spdlog)
 add_subdirectory(Catch2)
 add_subdirectory(glfw)
 add_subdirectory(glm)
+add_subdirectory(mp11)
 
 add_library(glad)
 target_include_directories(glad
