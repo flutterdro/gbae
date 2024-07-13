@@ -28,6 +28,7 @@ endif()
 
 
 
+add_compile_options(-fconstexpr-steps=2147483647)
 add_executable(fgba_exe)
 set_target_properties(fgba_exe PROPERTIES OUTPUT_NAME fgba)
 
@@ -41,7 +42,6 @@ target_compile_definitions(fgba_exe
         _LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_DEBUG
     >
 )
-
 target_include_directories(fgba_exe PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 # target_compile_options(fgba_exe
 #     PUBLIC -fexperimental-library

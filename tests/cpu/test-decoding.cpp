@@ -286,7 +286,7 @@ TEST_CASE("Decoding arm ldr", "[cpu][decoding][arm]") {
     auto b_d = [=](data_size ds) { return ds == data_size::byte ? b : 0_word; };
     auto s_d = [=](mll_signedndesd sign) { return sign == mll_signedndesd::signed_ ? s : 0_word; };
     auto h_d = [=](data_size ds) { return ds == data_size::hword ? h : 0_word; };
-    auto i2_d = [=](immediate_operand imop) { return imop != immediate_operand::on ? i2 : 0_word; };
+    auto i2_d = [=](immediate_operand imop) { return imop == immediate_operand::on ? i2 : 0_word; };
 
     auto p_var = GENERATE(indexing::pre, indexing::post);
     auto u_var = GENERATE(direction::up, direction::down);
@@ -392,7 +392,7 @@ TEST_CASE("Decoding arm str", "[cpu][decoding][arm]") {
     auto w_d = [=](write_back wb) { return wb == write_back::on ? w : 0_word; };
     auto b_d = [=](data_size ds) { return ds == data_size::byte ? b : 0_word; };
     auto h_d = [=](data_size ds) { return ds == data_size::hword ? h : 0_word; };
-    auto i2_d = [=](immediate_operand imop) { return imop != immediate_operand::on ? i2 : 0_word; };
+    auto i2_d = [=](immediate_operand imop) { return imop == immediate_operand::on ? i2 : 0_word; };
 
     auto p_var = GENERATE(indexing::pre, indexing::post);
     auto u_var = GENERATE(direction::up, direction::down);
